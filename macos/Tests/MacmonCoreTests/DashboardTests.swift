@@ -34,10 +34,12 @@ final class DashboardTests: XCTestCase {
   }
 
   func testSwapRowOnlyWhenSwapIsConfigured() {
-    let without = Sample.fixture(memory: .init(ramTotal: 64, ramUsage: 32, swapTotal: 0, swapUsage: 0))
+    let without = Sample.fixture(
+      memory: .init(ramTotal: 64, ramUsage: 32, ramAvailable: 24, swapTotal: 0, swapUsage: 0))
     XCTAssertEqual(Dashboard.memory(without).rows.map(\.id), ["memory-ram"])
 
-    let with = Sample.fixture(memory: .init(ramTotal: 64, ramUsage: 32, swapTotal: 4, swapUsage: 1))
+    let with = Sample.fixture(
+      memory: .init(ramTotal: 64, ramUsage: 32, ramAvailable: 24, swapTotal: 4, swapUsage: 1))
     XCTAssertEqual(Dashboard.memory(with).rows.map(\.id), ["memory-ram", "memory-swap"])
     XCTAssertEqual(Dashboard.memory(with).rows[1].fraction, 0.25)
   }

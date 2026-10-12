@@ -3,58 +3,67 @@ import XCTest
 @testable import MacmonCore
 
 final class StatusLabelTests: XCTestCase {
-  func testTextShowsRoundedCpuAndMemory() {
-    let label = StatusLabel(cpuPercent: 12.4, memoryPercent: 47.2)
-    XCTAssertEqual(label.text, "CPU 12%  MEM 47%")
+  func testClearWhileTheKernelStillHasMemoryToHandOut() {
+    XCTAssertEqual(StatusLabel(cpuPercent: 39, availablePercent: 15).load, .clear)
+    XCTAssertEqual(StatusLabel(cpuPercent: 0, availablePercent: 100).load, .clear)
+    // This machine's normal operating point: 87-92% "used" with the local model resident, but 15-16%
+    // still available. The dot must not colour that, or it would flap as the model's footprint moves.
+    XCTAssertEqual(StatusLabel(cpuPercent: 5, availablePercent: 16).load, .clear)
+    XCTAssertEqual(StatusLabel(cpuPercent: 5, availablePercent: 10).load, .clear)
   }
 
-  func testMemoryAloneDoesNotColourTheDotBelowNinetyFive() {
-    XCTAssertEqual(StatusLabel(cpuPercent: 39, memoryPercent: 88).load, .clear)
-    XCTAssertEqual(StatusLabel(cpuPercent: 0, memoryPercent: 0).load, .clear)
-    // A resident local model reads 87-92% "used" as its normal operating point: not a colour at all,
-    // or the dot would flip every few seconds as the model's footprint moves.
-    XCTAssertEqual(StatusLabel(cpuPercent: 5, memoryPercent: 88).load, .clear)
-    XCTAssertEqual(StatusLabel(cpuPercent: 5, memoryPercent: 92).load, .clear)
-    XCTAssertEqual(StatusLabel(cpuPercent: 5, memoryPercent: 95).load, .clear)
+  func testModerateFromFortyCpuOrUnderTenPercentAvailable() {
+    XCTAssertEqual(StatusLabel(cpuPercent: 40, availablePercent: 50).load, .moderate)
+    XCTAssertEqual(StatusLabel(cpuPercent: 60, availablePercent: 50).load, .moderate)
+    XCTAssertEqual(StatusLabel(cpuPercent: 75, availablePercent: 50).load, .moderate)
+
+    XCTAssertEqual(StatusLabel(cpuPercent: 5, availablePercent: 9.9).load, .moderate)
+    XCTAssertEqual(StatusLabel(cpuPercent: 5, availablePercent: 5).load, .moderate)
   }
 
-  func testModerateFromFortyCpu() {
-    XCTAssertEqual(StatusLabel(cpuPercent: 40, memoryPercent: 10).load, .moderate)
-    XCTAssertEqual(StatusLabel(cpuPercent: 60, memoryPercent: 10).load, .moderate)
-    XCTAssertEqual(StatusLabel(cpuPercent: 75, memoryPercent: 10).load, .moderate)
+  func testHeavyAboveSeventyFiveCpuOrUnderFivePercentAvailable() {
+    XCTAssertEqual(StatusLabel(cpuPercent: 76, availablePercent: 50).load, .heavy)
+    XCTAssertEqual(StatusLabel(cpuPercent: 100, availablePercent: 50).load, .heavy)
+
+    XCTAssertEqual(StatusLabel(cpuPercent: 5, availablePercent: 4.9).load, .heavy)
+    XCTAssertEqual(StatusLabel(cpuPercent: 5, availablePercent: 0).load, .heavy)
   }
 
-  func testMemoryAloneNeverMakesItModerate() {
-    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 89).load, .clear)
-    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 94).load, .clear)
-  }
+  func testTheTextKeepsTheUsedFigureWhileTheDotReadsPressure() {
+    // The label reports usage because that is what a reader expects to see; the dot reports pressure,
+    // and the two legitimately disagree on a machine with a large resident model.
+    let sample = Sample.fixture(
+      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 88, ramAvailable: 15, swapTotal: 0, swapUsage: 0))
 
-  func testHeavyAboveSeventyFiveCpuOrNinetyFiveMemory() {
-    XCTAssertEqual(StatusLabel(cpuPercent: 76, memoryPercent: 10).load, .heavy)
-    XCTAssertEqual(StatusLabel(cpuPercent: 100, memoryPercent: 10).load, .heavy)
-    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 96).load, .heavy)
+    XCTAssertEqual(StatusLabel(sample: sample).text, "CPU 12%  MEM 88%")
+    XCTAssertEqual(StatusLabel(sample: sample).load, .clear, "15% available is not a colour")
   }
 
   func testTheCompactFormDropsTheMemoryFromTheTextButNotFromTheDot() {
     let sample = Sample.fixture(
-      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 47, swapTotal: 0, swapUsage: 0))
+      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 47, ramAvailable: 40, swapTotal: 0, swapUsage: 0))
 
     XCTAssertEqual(StatusLabel(sample: sample).text, "CPU 12%  MEM 47%")
     XCTAssertEqual(StatusLabel(sample: sample, compact: true).text, "12%")
     XCTAssertEqual(StatusLabel(sample: sample, compact: true).load, .clear)
 
-    // Memory leaves the text, not the thresholds: the dot still shows a machine under pressure.
-    let busy = Sample.fixture(
-      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 96, swapTotal: 0, swapUsage: 0))
-    XCTAssertEqual(StatusLabel(sample: busy, compact: true).text, "12%")
-    XCTAssertEqual(StatusLabel(sample: busy, compact: true).load, .heavy)
+    // Under 5% available: heavy, whatever the text shows.
+    let squeezed = Sample.fixture(
+      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 96, ramAvailable: 2, swapTotal: 0, swapUsage: 0))
+    XCTAssertEqual(StatusLabel(sample: squeezed, compact: true).text, "12%")
+    XCTAssertEqual(StatusLabel(sample: squeezed, compact: true).load, .heavy)
   }
 
-  func testLoadFromASampleUsesItsMemoryFraction() {
-    let sample = Sample.fixture(
+  func testLoadFromASampleUsesItsCpuAndItsAvailability() {
+    let busyCpu = Sample.fixture(
       cpuScaledRatio: 0.42,
-      memory: .init(ramTotal: 100, ramUsage: 90, swapTotal: 0, swapUsage: 0))
-    XCTAssertEqual(StatusLabel(sample: sample).load, .moderate, "the CPU is over 40%, the memory is not")
-    XCTAssertEqual(StatusLabel(sample: sample).text, "CPU 42%  MEM 90%")
+      memory: .init(ramTotal: 100, ramUsage: 30, ramAvailable: 60, swapTotal: 0, swapUsage: 0))
+    XCTAssertEqual(StatusLabel(sample: busyCpu).load, .moderate, "the CPU is over 40%")
+    XCTAssertEqual(StatusLabel(sample: busyCpu).text, "CPU 42%  MEM 30%")
+
+    let outOfMemory = Sample.fixture(
+      cpuScaledRatio: 0.05,
+      memory: .init(ramTotal: 100, ramUsage: 95, ramAvailable: 4, swapTotal: 0, swapUsage: 0))
+    XCTAssertEqual(StatusLabel(sample: outOfMemory).load, .heavy, "4% available is heavy on an idle CPU")
   }
 }

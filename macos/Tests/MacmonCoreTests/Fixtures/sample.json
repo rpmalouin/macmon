@@ -1,317 +1,318 @@
 {
-  "timestamp": 1791837578.59474,
+  "timestamp": 1791843424.223345,
   "temp": {
-    "cpu_temp_avg": 42.222656,
-    "gpu_temp_avg": 41.294086
+    "cpu_temp_avg": 44.258247,
+    "gpu_temp_avg": 43.083893
   },
   "memory": {
     "ram_total": 68719476736,
-    "ram_usage": 61291986944,
+    "ram_usage": 60222881792,
+    "ram_available": 10567532544,
     "swap_total": 1073741824,
-    "swap_usage": 39780352
+    "swap_usage": 31391744
   },
   "fans": [
     {
       "name": "fan0",
-      "rpm": 1102,
+      "rpm": 1619,
       "max_rpm": 3625
     },
     {
       "name": "fan1",
-      "rpm": 1099,
+      "rpm": 1622,
       "max_rpm": 3625
     }
   ],
-  "cpu_scaled_ratio": 0.04170008,
-  "cpu_active_ratio": 0.096338,
+  "cpu_scaled_ratio": 0.04928365,
+  "cpu_active_ratio": 0.10310671,
   "cpu_tiers": [
     {
       "label": "P",
-      "freq_mhz": 1588,
-      "scaled_ratio": 0.043776777,
-      "active_ratio": 0.10982463,
+      "freq_mhz": 1344,
+      "scaled_ratio": 0.04323809,
+      "active_ratio": 0.109325476,
       "cores": [
         {
           "die_id": 0,
           "core_id": 0,
-          "freq_mhz": 1773,
-          "scaled_ratio": 0.13933806,
-          "active_ratio": 0.34417534
+          "freq_mhz": 0,
+          "scaled_ratio": 0.0,
+          "active_ratio": 0.0
         },
         {
           "die_id": 0,
           "core_id": 1,
-          "freq_mhz": 1757,
-          "scaled_ratio": 0.112570494,
-          "active_ratio": 0.2805585
+          "freq_mhz": 0,
+          "scaled_ratio": 0.0,
+          "active_ratio": 0.0
         },
         {
           "die_id": 0,
           "core_id": 2,
-          "freq_mhz": 1709,
-          "scaled_ratio": 0.09572278,
-          "active_ratio": 0.24518554
+          "freq_mhz": 0,
+          "scaled_ratio": 0.0,
+          "active_ratio": 0.0
         },
         {
           "die_id": 0,
           "core_id": 3,
-          "freq_mhz": 1736,
-          "scaled_ratio": 0.06920775,
-          "active_ratio": 0.17458515
+          "freq_mhz": 0,
+          "scaled_ratio": 0.0,
+          "active_ratio": 0.0
         },
         {
           "die_id": 0,
           "core_id": 4,
-          "freq_mhz": 1710,
-          "scaled_ratio": 0.059158,
-          "active_ratio": 0.15146539
+          "freq_mhz": 0,
+          "scaled_ratio": 0.0,
+          "active_ratio": 0.0
         },
         {
           "die_id": 0,
           "core_id": 5,
-          "freq_mhz": 1820,
-          "scaled_ratio": 0.042703427,
-          "active_ratio": 0.10272857
+          "freq_mhz": 0,
+          "scaled_ratio": 0.0,
+          "active_ratio": 0.0
         },
         {
           "die_id": 0,
           "core_id": 10,
-          "freq_mhz": 1487,
-          "scaled_ratio": 0.004274847,
-          "active_ratio": 0.012589367
+          "freq_mhz": 1719,
+          "scaled_ratio": 0.12460214,
+          "active_ratio": 0.3174727
         },
         {
           "die_id": 0,
           "core_id": 11,
-          "freq_mhz": 1570,
-          "scaled_ratio": 0.0020904902,
-          "active_ratio": 0.0058303275
+          "freq_mhz": 1720,
+          "scaled_ratio": 0.11377999,
+          "active_ratio": 0.28973728
         },
         {
           "die_id": 0,
           "core_id": 12,
-          "freq_mhz": 1462,
-          "scaled_ratio": 0.00020874439,
-          "active_ratio": 0.00062526495
+          "freq_mhz": 1744,
+          "scaled_ratio": 0.09354862,
+          "active_ratio": 0.2349439
         },
         {
           "die_id": 0,
           "core_id": 13,
-          "freq_mhz": 1344,
-          "scaled_ratio": 4.3048905e-05,
-          "active_ratio": 0.0001402933
+          "freq_mhz": 1762,
+          "scaled_ratio": 0.07236358,
+          "active_ratio": 0.1798313
         },
         {
           "die_id": 0,
           "core_id": 14,
-          "freq_mhz": 1344,
-          "scaled_ratio": 2.8185277e-06,
-          "active_ratio": 9.185381e-06
+          "freq_mhz": 1711,
+          "scaled_ratio": 0.057010334,
+          "active_ratio": 0.14591715
         },
         {
           "die_id": 0,
           "core_id": 15,
-          "freq_mhz": 1344,
-          "scaled_ratio": 8.089048e-07,
-          "active_ratio": 2.6361631e-06
+          "freq_mhz": 1750,
+          "scaled_ratio": 0.057552375,
+          "active_ratio": 0.14400342
         }
       ]
     },
     {
       "label": "S",
-      "freq_mhz": 2759,
-      "scaled_ratio": 0.037546694,
-      "active_ratio": 0.06936472,
+      "freq_mhz": 3430,
+      "scaled_ratio": 0.061374772,
+      "active_ratio": 0.090669155,
       "cores": [
         {
           "die_id": 0,
           "core_id": 0,
-          "freq_mhz": 2423,
-          "scaled_ratio": 0.11939141,
-          "active_ratio": 0.22700202
+          "freq_mhz": 2904,
+          "scaled_ratio": 0.13438752,
+          "active_ratio": 0.21317495
         },
         {
           "die_id": 0,
           "core_id": 1,
-          "freq_mhz": 2469,
-          "scaled_ratio": 0.064276464,
-          "active_ratio": 0.119926296
+          "freq_mhz": 2881,
+          "scaled_ratio": 0.10823846,
+          "active_ratio": 0.17311783
         },
         {
           "die_id": 0,
           "core_id": 2,
-          "freq_mhz": 2611,
-          "scaled_ratio": 0.022265097,
-          "active_ratio": 0.039287593
+          "freq_mhz": 3436,
+          "scaled_ratio": 0.038211416,
+          "active_ratio": 0.05123313
         },
         {
           "die_id": 0,
           "core_id": 3,
-          "freq_mhz": 2678,
-          "scaled_ratio": 0.0013618261,
-          "active_ratio": 0.0023429482
+          "freq_mhz": 3738,
+          "scaled_ratio": 0.029025475,
+          "active_ratio": 0.035775915
         },
         {
           "die_id": 0,
           "core_id": 4,
-          "freq_mhz": 3629,
-          "scaled_ratio": 0.0061769034,
-          "active_ratio": 0.007841704
+          "freq_mhz": 4099,
+          "scaled_ratio": 0.03075778,
+          "active_ratio": 0.03457654
         },
         {
           "die_id": 0,
           "core_id": 5,
-          "freq_mhz": 2749,
-          "scaled_ratio": 0.011808467,
-          "active_ratio": 0.019787738
+          "freq_mhz": 3523,
+          "scaled_ratio": 0.027628014,
+          "active_ratio": 0.03613658
         }
       ]
     }
   ],
-  "ecpu_freq_mhz": 1588,
-  "ecpu_scaled_ratio": 0.043776777,
-  "ecpu_active_ratio": 0.10982463,
-  "pcpu_freq_mhz": 2759,
-  "pcpu_scaled_ratio": 0.037546694,
-  "pcpu_active_ratio": 0.06936472,
+  "ecpu_freq_mhz": 1344,
+  "ecpu_scaled_ratio": 0.04323809,
+  "ecpu_active_ratio": 0.109325476,
+  "pcpu_freq_mhz": 3430,
+  "pcpu_scaled_ratio": 0.061374772,
+  "pcpu_active_ratio": 0.090669155,
   "ecpu_cores": [
     {
       "die_id": 0,
       "core_id": 0,
-      "freq_mhz": 1773,
-      "scaled_ratio": 0.13933806,
-      "active_ratio": 0.34417534
+      "freq_mhz": 0,
+      "scaled_ratio": 0.0,
+      "active_ratio": 0.0
     },
     {
       "die_id": 0,
       "core_id": 1,
-      "freq_mhz": 1757,
-      "scaled_ratio": 0.112570494,
-      "active_ratio": 0.2805585
+      "freq_mhz": 0,
+      "scaled_ratio": 0.0,
+      "active_ratio": 0.0
     },
     {
       "die_id": 0,
       "core_id": 2,
-      "freq_mhz": 1709,
-      "scaled_ratio": 0.09572278,
-      "active_ratio": 0.24518554
+      "freq_mhz": 0,
+      "scaled_ratio": 0.0,
+      "active_ratio": 0.0
     },
     {
       "die_id": 0,
       "core_id": 3,
-      "freq_mhz": 1736,
-      "scaled_ratio": 0.06920775,
-      "active_ratio": 0.17458515
+      "freq_mhz": 0,
+      "scaled_ratio": 0.0,
+      "active_ratio": 0.0
     },
     {
       "die_id": 0,
       "core_id": 4,
-      "freq_mhz": 1710,
-      "scaled_ratio": 0.059158,
-      "active_ratio": 0.15146539
+      "freq_mhz": 0,
+      "scaled_ratio": 0.0,
+      "active_ratio": 0.0
     },
     {
       "die_id": 0,
       "core_id": 5,
-      "freq_mhz": 1820,
-      "scaled_ratio": 0.042703427,
-      "active_ratio": 0.10272857
+      "freq_mhz": 0,
+      "scaled_ratio": 0.0,
+      "active_ratio": 0.0
     },
     {
       "die_id": 0,
       "core_id": 10,
-      "freq_mhz": 1487,
-      "scaled_ratio": 0.004274847,
-      "active_ratio": 0.012589367
+      "freq_mhz": 1719,
+      "scaled_ratio": 0.12460214,
+      "active_ratio": 0.3174727
     },
     {
       "die_id": 0,
       "core_id": 11,
-      "freq_mhz": 1570,
-      "scaled_ratio": 0.0020904902,
-      "active_ratio": 0.0058303275
+      "freq_mhz": 1720,
+      "scaled_ratio": 0.11377999,
+      "active_ratio": 0.28973728
     },
     {
       "die_id": 0,
       "core_id": 12,
-      "freq_mhz": 1462,
-      "scaled_ratio": 0.00020874439,
-      "active_ratio": 0.00062526495
+      "freq_mhz": 1744,
+      "scaled_ratio": 0.09354862,
+      "active_ratio": 0.2349439
     },
     {
       "die_id": 0,
       "core_id": 13,
-      "freq_mhz": 1344,
-      "scaled_ratio": 4.3048905e-05,
-      "active_ratio": 0.0001402933
+      "freq_mhz": 1762,
+      "scaled_ratio": 0.07236358,
+      "active_ratio": 0.1798313
     },
     {
       "die_id": 0,
       "core_id": 14,
-      "freq_mhz": 1344,
-      "scaled_ratio": 2.8185277e-06,
-      "active_ratio": 9.185381e-06
+      "freq_mhz": 1711,
+      "scaled_ratio": 0.057010334,
+      "active_ratio": 0.14591715
     },
     {
       "die_id": 0,
       "core_id": 15,
-      "freq_mhz": 1344,
-      "scaled_ratio": 8.089048e-07,
-      "active_ratio": 2.6361631e-06
+      "freq_mhz": 1750,
+      "scaled_ratio": 0.057552375,
+      "active_ratio": 0.14400342
     }
   ],
   "pcpu_cores": [
     {
       "die_id": 0,
       "core_id": 0,
-      "freq_mhz": 2423,
-      "scaled_ratio": 0.11939141,
-      "active_ratio": 0.22700202
+      "freq_mhz": 2904,
+      "scaled_ratio": 0.13438752,
+      "active_ratio": 0.21317495
     },
     {
       "die_id": 0,
       "core_id": 1,
-      "freq_mhz": 2469,
-      "scaled_ratio": 0.064276464,
-      "active_ratio": 0.119926296
+      "freq_mhz": 2881,
+      "scaled_ratio": 0.10823846,
+      "active_ratio": 0.17311783
     },
     {
       "die_id": 0,
       "core_id": 2,
-      "freq_mhz": 2611,
-      "scaled_ratio": 0.022265097,
-      "active_ratio": 0.039287593
+      "freq_mhz": 3436,
+      "scaled_ratio": 0.038211416,
+      "active_ratio": 0.05123313
     },
     {
       "die_id": 0,
       "core_id": 3,
-      "freq_mhz": 2678,
-      "scaled_ratio": 0.0013618261,
-      "active_ratio": 0.0023429482
+      "freq_mhz": 3738,
+      "scaled_ratio": 0.029025475,
+      "active_ratio": 0.035775915
     },
     {
       "die_id": 0,
       "core_id": 4,
-      "freq_mhz": 3629,
-      "scaled_ratio": 0.0061769034,
-      "active_ratio": 0.007841704
+      "freq_mhz": 4099,
+      "scaled_ratio": 0.03075778,
+      "active_ratio": 0.03457654
     },
     {
       "die_id": 0,
       "core_id": 5,
-      "freq_mhz": 2749,
-      "scaled_ratio": 0.011808467,
-      "active_ratio": 0.019787738
+      "freq_mhz": 3523,
+      "scaled_ratio": 0.027628014,
+      "active_ratio": 0.03613658
     }
   ],
   "gpu_freq_mhz": 338,
-  "gpu_scaled_ratio": 0.060344588,
-  "gpu_active_ratio": 0.28922552,
-  "cpu_power": 1.3182491,
-  "gpu_power": 0.22217147,
+  "gpu_scaled_ratio": 0.028415553,
+  "gpu_active_ratio": 0.13619289,
+  "cpu_power": 2.1553893,
+  "gpu_power": 0.061291665,
   "ane_power": 0.0,
-  "all_power": 1.5404205,
-  "sys_power": 16.039055,
+  "all_power": 2.216681,
+  "sys_power": 16.292486,
   "ram_power": 0.0,
   "gpu_ram_power": 0.0
 }

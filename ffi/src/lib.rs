@@ -304,6 +304,8 @@ mod tests {
       assert!(doc.get(key).is_some(), "missing {key}: {doc}");
     }
     assert!(doc["timestamp"].as_f64().is_some_and(|value| value > 0.0), "no timestamp: {doc}");
+    // The pressure figure, which the app's dot is judged on; `ram_usage` counts reclaimable pages.
+    assert!(doc["memory"]["ram_available"].is_u64(), "no available memory: {doc}");
     // The `pipe` aliases of the v0.7 names are for released consumers, not for new ones.
     assert!(doc.get("gpu_usage").is_none(), "deprecated alias present: {doc}");
 

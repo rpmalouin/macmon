@@ -18,12 +18,22 @@ public struct Sample: Decodable, Equatable {
   public struct Memory: Decodable, Equatable {
     public let ramTotal: UInt64
     public let ramUsage: UInt64
+    /// What the kernel can still hand out without compressing or swapping.
+    public let ramAvailable: UInt64
     public let swapTotal: UInt64
     public let swapUsage: UInt64
 
     /// Used memory as a fraction of the installed memory, 0...1.
     public var ramFraction: Double {
       ramTotal == 0 ? 0 : Double(ramUsage) / Double(ramTotal)
+    }
+
+    /// Memory still available as a fraction of the installed memory, 0...1.
+    ///
+    /// This, not [`ramFraction`], is the pressure figure: `ramUsage` counts reclaimable `inactive`
+    /// pages, so it reads 87–92% on a machine holding a resident local model while nothing is wrong.
+    public var availableFraction: Double {
+      ramTotal == 0 ? 0 : Double(ramAvailable) / Double(ramTotal)
     }
 
     /// Used swap as a fraction of the configured swap, 0...1.

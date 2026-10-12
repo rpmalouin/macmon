@@ -11,7 +11,7 @@ use crate::shared::{
 };
 use crate::sources::{
   IOHIDSensors, IOReport, IOReportIteratorItem, SMC, SocInfo, cfio_get_residencies, cfio_watts,
-  cpu_load_ticks, get_soc_info, libc_ram, libc_swap,
+  cpu_load_ticks, get_soc_info, libc_memory, libc_swap,
 };
 
 type WithError<T> = Result<T, Box<dyn std::error::Error>>;
@@ -69,8 +69,14 @@ pub struct TempMetrics {
 pub struct MemMetrics {
   /// Total physical memory in bytes.
   pub ram_total: u64,
-  /// Used physical memory in bytes.
+  /// Used physical memory in bytes. Counts reclaimable `inactive` pages, as Activity Monitor does.
   pub ram_usage: u64,
+  /// Memory the kernel can still hand out in bytes, without compressing or swapping: free,
+  /// inactive, purgeable and speculative pages.
+  ///
+  /// This is the pressure figure — `ram_usage` alone reads high on any machine holding a large
+  /// cache or a resident model while nothing is wrong. Zero when the kernel does not report it.
+  pub ram_available: u64,
   /// Total configured swap in bytes.
   pub swap_total: u64,
   /// Used swap in bytes.
@@ -639,9 +645,15 @@ impl Sampler {
   }
 
   fn get_mem(&mut self) -> WithError<MemMetrics> {
-    let (ram_usage, ram_total) = libc_ram()?;
+    let mem = libc_memory()?;
     let (swap_usage, swap_total) = libc_swap()?;
-    Ok(MemMetrics { ram_total, ram_usage, swap_total, swap_usage })
+    Ok(MemMetrics {
+      ram_total: mem.total,
+      ram_usage: mem.used,
+      ram_available: mem.available,
+      swap_total,
+      swap_usage,
+    })
   }
 
   fn get_sys_power(&mut self) -> WithError<f32> {
@@ -799,15 +811,40 @@ mod tests {
   use core_foundation::string::CFString;
 
   use super::{
-    CpuCoreKind, CpuCoreMetrics, CpuTierCores, CpuTierMetrics, Metrics, PowerSources, Sampler,
-    TempMetrics, aggregate_ioreport_metrics, calc_freq_from_residencies, collect_cpu_core_metrics,
-    cpu_cores_from_ticks, parse_cpu_core_channel, smc_numeric_value, temperature_average,
-    uses_cpu_ticks,
+    CpuCoreKind, CpuCoreMetrics, CpuTierCores, CpuTierMetrics, MemMetrics, Metrics, PowerSources,
+    Sampler, TempMetrics, aggregate_ioreport_metrics, calc_freq_from_residencies,
+    collect_cpu_core_metrics, cpu_cores_from_ticks, parse_cpu_core_channel, smc_numeric_value,
+    temperature_average, uses_cpu_ticks,
   };
   use crate::sources::{
     CpuTierInfo, IOHIDSensors, IOReportIteratorItem, SocInfo, cpu_load_ticks, cpu_tier_infos,
     tiers_from_perflevels,
   };
+
+  #[test]
+  fn memory_reports_what_the_kernel_can_still_hand_out() {
+    let mem = crate::sources::libc_memory().unwrap();
+
+    assert!(mem.total > 0, "no total memory");
+    assert!(mem.used <= mem.total, "used {} over total {}", mem.used, mem.total);
+    assert!(mem.available <= mem.total, "available {} over total {}", mem.available, mem.total);
+    assert!(mem.available > 0, "nothing available at all?");
+  }
+
+  #[test]
+  fn the_memory_document_carries_the_pressure_field() {
+    let json = serde_json::to_value(MemMetrics {
+      ram_total: 64,
+      ram_usage: 56,
+      ram_available: 10,
+      swap_total: 1,
+      swap_usage: 0,
+    })
+    .unwrap();
+
+    assert_eq!(json["ram_available"], 10, "{json}");
+    assert_eq!(json["ram_usage"], 56, "{json}");
+  }
 
   #[test]
   fn ane_power_uses_pmp_only_when_energy_model_is_absent() {

@@ -261,7 +261,13 @@ mod tests {
     for i in 0..HISTORY_LEN + 10 {
       power.push(i as f64);
       freq.push(FreqSample::new(1000, 0.25, 0.5));
-      mem.push(MemMetrics { ram_total: 100, ram_usage: i as u64, swap_total: 0, swap_usage: 0 });
+      mem.push(MemMetrics {
+        ram_total: 100,
+        ram_usage: i as u64,
+        ram_available: 100 - i as u64,
+        swap_total: 0,
+        swap_usage: 0,
+      });
       temp.push(Some(i as f32 + 1.0));
     }
 

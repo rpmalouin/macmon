@@ -650,6 +650,7 @@ mod tests {
       memory: MemMetrics {
         ram_total: 36 << 30,
         ram_usage: 20 << 30,
+        ram_available: 14 << 30,
         swap_total: 2 << 30,
         swap_usage: 1 << 30,
       },
@@ -1391,6 +1392,7 @@ mod tests {
         m.memory = MemMetrics {
           ram_total: 24 << 30,
           ram_usage: (16.81 * GIB) as u64,
+          ram_available: (7.19 * GIB) as u64,
           swap_total: if swap { 3 << 30 } else { 0 },
           swap_usage: if swap { (2.37 * GIB) as u64 } else { 0 },
         }

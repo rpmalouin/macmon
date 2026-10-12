@@ -79,6 +79,12 @@ POWER does today.
       `macapp-install`.
       Plan: [docs/plans/completed/20261012-macos-app.md](plans/completed/20261012-macos-app.md).
 
+- [x] **14. Memory pressure in the sampler.** `MemMetrics` carries `ram_available` — free, inactive,
+      purgeable and speculative pages — because `ram_usage` counts reclaimable memory and so cannot tell
+      pressure from a resident model. `libc_memory` reports it (`libc_ram` stays for its older callers),
+      `macmon pipe` and the C ABI carry it, and the app's menu bar dot is judged on it: under 5% available
+      is heavy and under 10% moderate, against 15-16% on this machine with the local model loaded.
+
 Later, only on request: automatic grouping of an app's processes (filter terms with totals
 cover the known-app case), per-process network (only `nettop` has it without root), history
 graphs per process, Activity Monitor's Memory and Statistics tabs (context switches, faults,

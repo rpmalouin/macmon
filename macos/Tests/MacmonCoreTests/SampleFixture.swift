@@ -20,7 +20,8 @@ extension Sample {
     gpuRamPower: Double = 0,
     temp: Sample.Temperature = .init(cpuTempAvg: nil, gpuTempAvg: nil),
     memory: Sample.Memory = .init(
-      ramTotal: 68_719_476_736, ramUsage: 34_359_738_368, swapTotal: 0, swapUsage: 0),
+      ramTotal: 68_719_476_736, ramUsage: 34_359_738_368, ramAvailable: 20 << 30, swapTotal: 0,
+      swapUsage: 0),
     fans: [Sample.Fan] = []
   ) -> Sample {
     Sample(

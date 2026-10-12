@@ -425,9 +425,25 @@ pub(crate) fn cpu_load_ticks() -> Option<Vec<[u32; 4]>> {
 
 // MARK: RAM
 
-/// Read used and total RAM in bytes via libc/mach APIs.
-pub fn libc_ram() -> WithError<(u64, u64)> {
-  let (mut usage, mut total) = (0u64, 0u64);
+/// What the kernel reports about memory, in bytes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MemoryUsage {
+  /// Used memory as Activity Monitor counts it: active, inactive, wired and compressed pages, less
+  /// purgeable and file-backed ones.
+  pub used: u64,
+  /// Installed memory.
+  pub total: u64,
+  /// What the kernel can hand out without compressing or swapping: free, inactive, purgeable and
+  /// speculative pages.
+  ///
+  /// This is the pressure signal. `used` counts `inactive` pages, which are reclaimable, so it
+  /// reads high on any machine holding a large cache or a resident model while nothing is wrong.
+  pub available: u64,
+}
+
+/// Read memory usage in bytes via libc/mach APIs.
+pub fn libc_memory() -> WithError<MemoryUsage> {
+  let (mut usage, mut total, mut available) = (0u64, 0u64, 0u64);
 
   unsafe {
     let mut name = [libc::CTL_HW, libc::HW_MEMSIZE];
@@ -463,7 +479,7 @@ pub fn libc_ram() -> WithError<(u64, u64)> {
       return Err("Failed to get memory stats".into());
     }
 
-    let page_size_kb = libc::sysconf(libc::_SC_PAGESIZE) as u64;
+    let page_size = libc::sysconf(libc::_SC_PAGESIZE) as u64;
 
     usage = (stats.active_count as u64
       + stats.inactive_count as u64
@@ -472,10 +488,22 @@ pub fn libc_ram() -> WithError<(u64, u64)> {
       + stats.compressor_page_count as u64
       - stats.purgeable_count as u64
       - stats.external_page_count as u64)
-      * page_size_kb;
+      * page_size;
+
+    available = (stats.free_count as u64
+      + stats.inactive_count as u64
+      + stats.purgeable_count as u64
+      + stats.speculative_count as u64)
+      * page_size;
   }
 
-  Ok((usage, total))
+  Ok(MemoryUsage { used: usage, total, available })
+}
+
+/// Read used and total RAM in bytes. Kept for callers of the older signature; [`libc_memory`] also
+/// reports what the kernel can still hand out.
+pub fn libc_ram() -> WithError<(u64, u64)> {
+  libc_memory().map(|mem| (mem.used, mem.total))
 }
 
 /// Read used and total swap in bytes via libc sysctl.

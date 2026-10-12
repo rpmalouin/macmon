@@ -19,26 +19,26 @@ public struct StatusLabel: Equatable {
     let cpu = (sample.cpuScaledRatio * 100).rounded()
     let memory = (sample.memory.ramFraction * 100).rounded()
     text = compact ? "\(Int(cpu))%" : "CPU \(Int(cpu))%  MEM \(Int(memory))%"
-    load = Self.load(cpuPercent: cpu, memoryPercent: memory)
+    load = Self.load(cpuPercent: cpu, availablePercent: sample.memory.availableFraction * 100)
   }
 
   /// Plain percentages, for tests and for a caller that already has them.
-  public init(cpuPercent: Double, memoryPercent: Double) {
-    text = "CPU \(Int(cpuPercent.rounded()))%  MEM \(Int(memoryPercent.rounded()))%"
-    load = Self.load(cpuPercent: cpuPercent, memoryPercent: memoryPercent)
+  public init(cpuPercent: Double, availablePercent: Double) {
+    text = "CPU \(Int(cpuPercent.rounded()))%  MEM —"
+    load = Self.load(cpuPercent: cpuPercent, availablePercent: availablePercent)
   }
 
-  /// Heavy above 75% CPU, or above 95% memory; moderate from 40% CPU; clear below.
+  /// Heavy above 75% CPU, or under 5% of memory still available; moderate above 40% CPU, or under
+  /// 10% available; clear otherwise.
   ///
-  /// CPU carries the bands and memory is a single high-water line, because the memory number is
-  /// Activity Monitor's "Memory Used" and it counts `inactive` pages, which are reclaimable. On this
-  /// machine, which keeps a ~35 GB local model resident, that reads 87–92% as its normal operating
-  /// point with the swap file untouched — so any threshold inside that band makes the dot flip
-  /// between colours every few seconds. Above 95% something has joined the model, and that is worth a
-  /// red dot; everything else is the panel's Memory row.
-  static func load(cpuPercent: Double, memoryPercent: Double) -> Load {
-    if cpuPercent > 75 || memoryPercent > 95 { return .heavy }
-    if cpuPercent >= 40 { return .moderate }
+  /// Memory is judged by what the kernel can still hand out rather than by how much is in use.
+  /// `ram_usage` is Activity Monitor's "Memory Used", which counts reclaimable `inactive` pages: on a
+  /// machine keeping a ~35 GB local model resident it sits at 87–92% as the normal operating point,
+  /// so any threshold on it either fires constantly or flaps. Available memory does not: it reads
+  /// 15–16% on this machine with the model loaded, clear of the 10% line by design.
+  static func load(cpuPercent: Double, availablePercent: Double) -> Load {
+    if cpuPercent > 75 || availablePercent < 5 { return .heavy }
+    if cpuPercent >= 40 || availablePercent < 10 { return .moderate }
     return .clear
   }
 }

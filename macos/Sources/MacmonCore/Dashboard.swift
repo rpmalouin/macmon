@@ -142,6 +142,7 @@ public struct Dashboard: Equatable {
       DashboardRow(
         id: "memory-ram", label: "Memory",
         value: usage(sample.memory.ramUsage, of: sample.memory.ramTotal),
+        detail: sample.memory.ramAvailable > 0 ? available(sample.memory.ramAvailable) : nil,
         fraction: clamped(sample.memory.ramFraction))
     ]
     if sample.memory.swapTotal > 0 {
@@ -198,6 +199,11 @@ public struct Dashboard: Equatable {
 
   static func celsius(_ value: Double) -> String {
     String(format: "%.1f °C", value)
+  }
+
+  /// `9.6 free`: what the kernel can still hand out, the figure the dot is judged on.
+  static func available(_ bytes: UInt64) -> String {
+    String(format: "%.1f free", Double(bytes) / 1_073_741_824)
   }
 
   /// `18.4 / 64 GB`.
