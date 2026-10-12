@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private let panel = PanelModel()
   private let popover = NSPopover()
   private var item: NSStatusItem?
+  /// The last minute of samples, for the panel's history block.
+  private var history = History()
 
   private var debug: Bool { ProcessInfo.processInfo.environment["MACMON_APP_DEBUG"] != nil }
 
@@ -58,7 +60,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     item?.button?.attributedTitle = Self.attributedTitle(label)
 
     if let sample = monitor.sample {
+      history.append(sample) // ignores a timestamp it already has
       panel.dashboard = Dashboard(sample: sample, soc: monitor.soc)
+      panel.sparkline = history.sparkline()
     }
     panel.failure = monitor.failure
 

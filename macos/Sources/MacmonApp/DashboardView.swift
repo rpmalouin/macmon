@@ -5,6 +5,8 @@ import SwiftUI
 @Observable
 final class PanelModel {
   var dashboard: Dashboard?
+  /// The history block's series, nil while the window is too short to draw.
+  var sparkline: Sparkline?
   var failure: String?
 }
 
@@ -29,14 +31,15 @@ struct DashboardView: View {
           .fixedSize(horizontal: false, vertical: true)
       }
 
-      ForEach(model.dashboard?.sections ?? []) { section in
-        VStack(alignment: .leading, spacing: 3) {
-          if let title = section.title {
-            Text(title).font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
-          }
-          ForEach(section.rows) { row in RowView(row: row) }
-        }
+      let sections = model.dashboard?.sections ?? []
+      let head = sections.prefix { $0.id == "cpu" || $0.id == "gpu" }
+      let tail = sections.drop { $0.id == "cpu" || $0.id == "gpu" }
+
+      ForEach(head) { section in SectionView(section: section) }
+      if let sparkline = model.sparkline {
+        HistoryView(sparkline: sparkline)
       }
+      ForEach(tail) { section in SectionView(section: section) }
 
       Divider()
       HStack {
@@ -47,6 +50,20 @@ struct DashboardView: View {
     }
     .padding(12)
     .frame(width: 300, alignment: .leading)
+  }
+}
+
+/// One titled group of rows.
+private struct SectionView: View {
+  let section: DashboardSection
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 3) {
+      if let title = section.title {
+        Text(title).font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+      }
+      ForEach(section.rows) { row in RowView(row: row) }
+    }
   }
 }
 

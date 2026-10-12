@@ -6,6 +6,7 @@ import Foundation
 /// at a quiet default. A test sets only what it is about.
 extension Sample {
   static func fixture(
+    timestamp: Double = 1_791_836_540,
     cpuScaledRatio: Double = 0.12,
     cpuTiers: [Sample.Tier]? = nil,
     cpuPower: Double = 0,
@@ -23,7 +24,7 @@ extension Sample {
     fans: [Sample.Fan] = []
   ) -> Sample {
     Sample(
-      timestamp: 1_791_836_540, cpuScaledRatio: cpuScaledRatio, cpuActiveRatio: 0.2,
+      timestamp: timestamp, cpuScaledRatio: cpuScaledRatio, cpuActiveRatio: 0.2,
       cpuTiers: cpuTiers ?? [tier("P", cores: 12)], cpuPower: cpuPower, gpuScaledRatio: gpuScaledRatio,
       gpuFreqMhz: gpuFreqMhz, gpuActiveRatio: 0, gpuPower: gpuPower, anePower: anePower,
       allPower: allPower, sysPower: sysPower, ramPower: ramPower, gpuRamPower: gpuRamPower,
