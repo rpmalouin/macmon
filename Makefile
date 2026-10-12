@@ -4,20 +4,21 @@ CARGO_FLAGS := --release --locked
 
 prepare:
 	cargo +nightly fmt
-	cargo clippy $(CARGO_FLAGS) --fix --all-targets --allow-dirty -- -D warnings
+	cargo clippy $(CARGO_FLAGS) --workspace --fix --all-targets --allow-dirty -- -D warnings
 	cargo check $(CARGO_FLAGS)
 
 check:
 	cargo +nightly fmt --check
-	cargo clippy $(CARGO_FLAGS) --all-targets -- -D warnings
+	cargo clippy $(CARGO_FLAGS) --workspace --all-targets -- -D warnings
 	cargo check $(CARGO_FLAGS) --bin macmon
-	cargo check $(CARGO_FLAGS) --lib --no-default-features
+	cargo check $(CARGO_FLAGS) -p macmon --lib --no-default-features
+	cargo check $(CARGO_FLAGS) -p macmon-ffi
 
 test:
-	cargo test $(CARGO_FLAGS)
+	cargo test $(CARGO_FLAGS) --workspace
 
 build:
-	cargo build $(CARGO_FLAGS)
+	cargo build $(CARGO_FLAGS) --workspace
 	ls -lh target/release/$(shell basename $(CURDIR))
 
 update:

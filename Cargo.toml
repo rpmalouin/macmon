@@ -60,3 +60,7 @@ serde_json = "1.0.151"
 
 [dev-dependencies]
 owo-colors = "4.3.0"
+
+[workspace]
+members = ["ffi"]
+resolver = "3"

@@ -3,7 +3,8 @@
 
 Usage: scripts/loc.py [REF]
 
-Counts library (src/*.rs), app (src/app/*.rs) and tui (src/app/tui/*.rs) in the working tree.
+Counts library (src/*.rs), app (src/app/*.rs), tui (src/app/tui/*.rs) and the C ABI
+(ffi/src/*.rs) in the working tree.
 With REF (e.g. origin/main), also counts each part at that git ref and prints the difference.
 """
 
@@ -13,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PARTS = {"library": "src", "app": "src/app", "tui": "src/app/tui"}
+PARTS = {"library": "src", "app": "src/app", "tui": "src/app/tui", "ffi": "ffi/src"}
 CFG_TEST_RE = re.compile(r"\s*#\[cfg\(test\)\]")
 # String and char literals and line comments: braces in them don't change the depth.
 NOISE_RE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])\'|//.*')
