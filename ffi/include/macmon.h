@@ -51,6 +51,25 @@ char *macmon_sampler_soc_json(void *sampler);
 /* Release a sampler. NULL is ignored. The pointer must not be used afterwards. */
 void macmon_sampler_free(void *sampler);
 
+/* Create a process sampler, or return NULL with the reason in macmon_last_error(). Like the
+ * metrics sampler above, it belongs to the thread that created it. */
+void *macmon_procs_new(void);
+
+/* Sample every process and return the busiest `top_n` as a JSON array, to be released with
+ * macmon_free(). Each row carries `pid`, `name`, `user`, `cpu_pct` (100% is one busy core, as in
+ * Activity Monitor), `mem_bytes`, `power_w` and `gpu_pct`.
+ *
+ * `power_w` is null when the energy counter is not readable: another user's process, or any
+ * process before macOS 13. `top_n` of 0 returns every process. The array is sorted by `cpu_pct`,
+ * busiest first.
+ *
+ * CPU and power are rates since the previous call, so a sampler's first call reports them as zero:
+ * sample once and discard the result before publishing, as the app does. NULL on failure. */
+char *macmon_procs_next(void *sampler, uint32_t top_n);
+
+/* Release a process sampler. NULL is ignored. */
+void macmon_procs_free(void *sampler);
+
 /* The last error of the calling thread, or an empty string. The pointer stays valid until the
  * next call that sets or clears an error on this thread; copy it to keep it. */
 const char *macmon_last_error(void);

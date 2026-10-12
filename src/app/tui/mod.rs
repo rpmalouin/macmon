@@ -20,6 +20,7 @@ use std::time::{Duration, Instant};
 use info::Info;
 use kill::Kill;
 use layout::{LayoutPlan, compute_layout};
+use macmon::procs::{ProcInfo, ProcSampler};
 use macmon::{Metrics, Sampler, SocInfo};
 use proc_view::ProcView;
 use ratatui::crossterm::event::{
@@ -31,7 +32,6 @@ use ratatui::prelude::*;
 use store::{CpuClusters, FanStore, FreqSample, FreqStore, MemoryStore, PowerStore, TempStore};
 
 use crate::config::{Config, TUI_MIN_MS};
-use crate::procs::{ProcInfo, ProcSampler};
 
 type WithError<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -586,6 +586,7 @@ mod tests {
   use std::sync::{Arc, Mutex, RwLock, mpsc};
   use std::time::Duration;
 
+  use macmon::procs::ProcInfo;
   use macmon::{CpuTierInfo, CpuTierMetrics, FanMetric, MemMetrics, Metrics, SocInfo, TempMetrics};
   use ratatui::Terminal;
   use ratatui::backend::TestBackend;
@@ -603,7 +604,6 @@ mod tests {
   use super::{App, Event, restore_term_once, run_procs_thread};
   use crate::config::{Config, ProcSort, RatioMode, TUI_MAX_MS, TUI_MIN_MS, TempConfig, ViewType};
   use crate::fds::{Kind, OpenFile};
-  use crate::procs::ProcInfo;
 
   fn key(c: char) -> KeyEvent {
     KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE)

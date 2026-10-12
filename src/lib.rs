@@ -77,6 +77,10 @@ mod clpc;
 pub mod diagnostics;
 #[doc(hidden)]
 pub mod metrics;
+/// Per-process usage, behind the `procs` feature: libproc for the user's own processes, `ps` for
+/// the rest, and GPU time from the IORegistry.
+#[cfg(feature = "procs")]
+pub mod procs;
 mod shared;
 pub mod sources;
 

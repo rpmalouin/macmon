@@ -3,6 +3,7 @@
 
 use std::cmp::Ordering;
 
+use macmon::procs::ProcInfo;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{
@@ -19,7 +20,6 @@ use super::boxes::{
 use super::store::ratio;
 use super::theme::{self, dim, faint, gradient, heading, text};
 use crate::config::{Config, ProcSort};
-use crate::procs::ProcInfo;
 
 /// Narrowest NAME column; other columns are dropped to keep it.
 const NAME_MIN_WIDTH: u16 = 8;
@@ -978,12 +978,12 @@ fn draw_row<'a>(
 
 #[cfg(test)]
 mod tests {
+  use macmon::procs::ProcInfo;
   use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
   use ratatui::layout::Rect;
 
   use super::{ProcView, column_areas, cut_end, cut_middle, cut_start, fit_columns};
   use crate::config::ProcSort;
-  use crate::procs::ProcInfo;
 
   const MIB: u64 = 1 << 20;
 

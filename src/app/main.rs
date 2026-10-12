@@ -12,7 +12,6 @@ use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 mod config;
 mod fds;
 mod find_clpc;
-mod procs;
 mod serve;
 mod stress;
 mod tui;

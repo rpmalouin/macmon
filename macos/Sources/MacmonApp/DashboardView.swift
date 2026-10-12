@@ -40,6 +40,9 @@ struct DashboardView: View {
         HistoryView(sparkline: sparkline)
       }
       ForEach(tail) { section in SectionView(section: section) }
+      if let processes = model.dashboard?.processes, !processes.isEmpty {
+        ProcessSectionView(rows: processes)
+      }
 
       Divider()
       HStack {
@@ -63,6 +66,40 @@ private struct SectionView: View {
         Text(title).font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
       }
       ForEach(section.rows) { row in RowView(row: row) }
+    }
+  }
+}
+
+/// The process list: name, CPU, power and GPU share.
+private struct ProcessSectionView: View {
+  let rows: [ProcessRow]
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 3) {
+      Text("Processes").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+      ForEach(rows) { row in
+        HStack(spacing: 6) {
+          Text(row.name)
+            .font(.system(size: 11))
+            .lineLimit(1)
+            .truncationMode(.middle)
+          Spacer(minLength: 4)
+          Text(row.cpu)
+            .font(.system(size: 11, design: .monospaced))
+            .lineLimit(1)
+            .frame(width: 50, alignment: .trailing)
+          Text(row.power)
+            .font(.system(size: 10, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(width: 58, alignment: .trailing)
+          Text(row.gpu)
+            .font(.system(size: 10, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(width: 40, alignment: .trailing)
+        }
+      }
     }
   }
 }

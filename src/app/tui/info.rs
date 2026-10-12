@@ -1,6 +1,7 @@
 //! The info overlay (`i`): the executable, working directory, open files and sockets of the
 //! selected process, under a line counting the descriptors; `e` reveals one.
 
+use macmon::procs::ProcInfo;
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, MouseEvent, MouseEventKind};
 use ratatui::layout::Rect;
@@ -16,7 +17,6 @@ use super::proc_view::{
 };
 use super::theme::{self, faint, heading, text};
 use crate::fds::{Kind, OpenFile};
-use crate::procs::ProcInfo;
 
 /// The kinds on the counts line, in its order, with their labels.
 #[rustfmt::skip]
@@ -339,6 +339,7 @@ impl Info {
 
 #[cfg(test)]
 mod tests {
+  use macmon::procs::{self, ProcInfo};
   use ratatui::Terminal;
   use ratatui::backend::TestBackend;
   use ratatui::buffer::Buffer;
@@ -349,7 +350,6 @@ mod tests {
 
   use super::{Info, cut_path};
   use crate::fds::{Kind, OpenFile};
-  use crate::procs::{self, ProcInfo};
   use crate::tui::kill::tests::FakeSys;
   use crate::tui::kill::{LibcSys, ProcSys};
   use crate::tui::theme;

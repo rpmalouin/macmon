@@ -54,6 +54,40 @@ final class DashboardTests: XCTestCase {
     XCTAssertEqual(threeTiers?.rows.count, 4)
   }
 
+  func testProcessRowsCarryTheirColumns() {
+    let processes = [
+      Process(
+        pid: 412, name: "Hermes", user: "ron", cpuPct: 34.21, memBytes: 3_400_000_000, powerW: 2.31,
+        gpuPct: 12.4),
+      Process(
+        pid: 91, name: "WindowServer", user: "root", cpuPct: 8, memBytes: 1_000_000, powerW: nil,
+        gpuPct: 0),
+    ]
+    let dashboard = Dashboard(sample: Sample.fixture(), soc: nil, processes: processes)
+
+    XCTAssertEqual(dashboard.processes.map(\.name), ["Hermes", "WindowServer"])
+    XCTAssertEqual(dashboard.processes[0].cpu, "34.2%")
+    XCTAssertEqual(dashboard.processes[0].power, "2.31 W")
+    XCTAssertEqual(dashboard.processes[0].gpu, "12%")
+    XCTAssertEqual(dashboard.processes[1].power, "—", "an unreadable energy counter is not zero")
+  }
+
+  func testOnlyTheBusiestProcessesAreShown() {
+    let processes = (0..<12).map { index in
+      Process(
+        pid: Int32(index), name: "p\(index)", user: "ron", cpuPct: Double(100 - index), memBytes: 0,
+        powerW: 0, gpuPct: 0)
+    }
+    let dashboard = Dashboard(sample: Sample.fixture(), soc: nil, processes: processes)
+
+    XCTAssertEqual(dashboard.processes.count, 8)
+    XCTAssertEqual(dashboard.processes.first?.name, "p0", "the ABI's order is kept")
+  }
+
+  func testNoProcessListLeavesTheSectionOut() {
+    XCTAssertTrue(Dashboard(sample: Sample.fixture(), soc: nil).processes.isEmpty)
+  }
+
   func testTierRowsAreIndentedUnderTheirPackage() {
     let cpu = Dashboard.cpu(Sample.fixture(cpuTiers: [Sample.tier("P", cores: 12)]))
     XCTAssertEqual(cpu?.rows.map(\.indented), [false, true], "the package row, then its tier")

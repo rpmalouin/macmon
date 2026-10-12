@@ -6,6 +6,7 @@ use std::fmt;
 use std::io::{self, Write};
 use std::process::{self, Command, Stdio};
 
+use macmon::procs::{self, ProcInfo};
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Constraint, Margin, Position, Rect};
@@ -16,7 +17,6 @@ use super::boxes::{Titles, cells, draw_box};
 use super::proc_view::{cut_end, cut_start};
 use super::theme::{self, dim, faint, heading, text};
 use crate::fds::{self, OpenFile};
-use crate::procs::{self, ProcInfo};
 
 /// A button: its label and the signal it sends (none: it closes the popup). The buttons with a
 /// signal are pressed by the first letter of their label (in lower case), shown as a key when not
@@ -253,6 +253,7 @@ pub(super) mod tests {
   use std::process::{Child, Command};
   use std::rc::Rc;
 
+  use macmon::procs::{self, ProcInfo};
   use ratatui::Terminal;
   use ratatui::backend::TestBackend;
   use ratatui::buffer::Buffer;
@@ -263,7 +264,6 @@ pub(super) mod tests {
 
   use super::{Kill, LibcSys, ProcSys, theme};
   use crate::fds::OpenFile;
-  use crate::procs::{self, ProcInfo};
 
   /// A fake process: its start second (`None`: unreadable, as a zombie) and the errno of signals.
   type FakeProc = (Option<u64>, Option<i32>);

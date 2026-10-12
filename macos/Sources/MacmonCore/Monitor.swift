@@ -11,6 +11,8 @@ public final class Monitor {
   public private(set) var sample: Sample?
   /// Static machine information, published once with the first sample.
   public private(set) var soc: SocInfo?
+  /// The busiest processes, busiest first.
+  public private(set) var processes: [Process] = []
   public private(set) var failure: String?
 
   /// Called on the main thread whenever `sample` or `failure` changes.
@@ -21,6 +23,9 @@ public final class Monitor {
   @ObservationIgnored private var intervalMs: UInt32
   @ObservationIgnored private var running = false
   @ObservationIgnored private var stopped = false
+  /// How many processes the panel shows. The rest never leaves the sampler: a whole process list
+  /// is over a thousand rows and would be serialized every tick for nothing.
+  @ObservationIgnored private static let topProcesses = 8
 
   public init(intervalMs: UInt32 = 1000) {
     self.intervalMs = max(100, intervalMs)
@@ -38,6 +43,7 @@ public final class Monitor {
       self.running = true
       self.stopped = false
       var sampler: Sampler?
+      var processSampler: ProcessSampler?
 
       while !self.stopped {
         do {
@@ -52,10 +58,23 @@ public final class Monitor {
           self.publish(sample: nil, failure: String(describing: error))
           // A sampler that cannot be created keeps failing: wait a beat instead of spinning.
           Thread.sleep(forTimeInterval: 1)
+          continue
+        }
+
+        do {
+          if processSampler == nil {
+            let created = try ProcessSampler()
+            try created.warmUp() // the first call of a sampler reports zero rates
+            processSampler = created
+          }
+          self.publish(processes: try processSampler?.next(topN: Self.topProcesses) ?? [])
+        } catch {
+          // A process list that cannot be read leaves the metrics alone.
+          self.publish(failure: String(describing: error))
         }
       }
 
-      sampler = nil // released on the thread that created it
+      // Both samplers are released here, on the thread that created them.
       self.running = false
     }
   }
@@ -63,6 +82,22 @@ public final class Monitor {
   /// Ask the loop to stop; it exits after the sample in flight (up to one interval).
   public func stop() {
     stopped = true
+  }
+
+  private func publish(processes: [Process]) {
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      self.processes = processes
+      self.onUpdate?()
+    }
+  }
+
+  private func publish(failure: String) {
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      self.failure = failure
+      self.onUpdate?()
+    }
   }
 
   private func publish(soc: SocInfo) {

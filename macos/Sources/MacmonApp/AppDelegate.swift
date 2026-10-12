@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     if let sample = monitor.sample {
       history.append(sample) // ignores a timestamp it already has
-      panel.dashboard = Dashboard(sample: sample, soc: monitor.soc)
+      panel.dashboard = Dashboard(sample: sample, soc: monitor.soc, processes: monitor.processes)
       panel.sparkline = history.sparkline()
     }
     panel.failure = monitor.failure

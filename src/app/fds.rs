@@ -7,7 +7,7 @@ use std::ffi::{c_char, c_int, c_void};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::{io, mem};
 
-use crate::procs::c_chars_to_string;
+use macmon::procs::c_chars_to_string;
 
 const PROC_PIDFDVNODEPATHINFO: c_int = 2;
 const PROC_PIDFDSOCKETINFO: c_int = 3;

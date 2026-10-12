@@ -12,7 +12,7 @@ use std::time::Instant;
 
 use core_foundation::array::CFArray;
 use core_foundation::base::{CFAllocatorRef, CFType, CFTypeRef, TCFType, kCFAllocatorDefault};
-use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
+use core_foundation::dictionary::{CFDictionary, CFDictionaryRef, CFMutableDictionaryRef};
 use core_foundation::number::CFNumber;
 use core_foundation::string::{CFString, CFStringRef};
 
@@ -99,7 +99,9 @@ unsafe extern "C" {
 #[link(name = "IOKit", kind = "framework")]
 #[rustfmt::skip]
 unsafe extern "C" {
-  fn IOServiceMatching(name: *const c_char) -> CFDictionaryRef;
+  // Declared in `sources.rs` as well, with the IOKit names the two call sites share: inside one
+  // crate the duplicates must agree, so this signature follows that one.
+  fn IOServiceMatching(name: *const c_char) -> CFMutableDictionaryRef;
   fn IOServiceGetMatchingServices(main_port: u32, matching: CFDictionaryRef, existing: *mut u32) -> c_int;
   fn IORegistryEntryGetChildIterator(entry: u32, plane: *const c_char, iterator: *mut u32) -> c_int;
   fn IORegistryEntryCreateCFProperty(entry: u32, key: CFStringRef, allocator: CFAllocatorRef, options: u32) -> CFTypeRef;
@@ -218,7 +220,7 @@ fn ticks_to_ns(ticks: u64, numer: u32, denom: u32) -> u64 {
 }
 
 /// String from a fixed-size C buffer that may lack the trailing NUL.
-pub(crate) fn c_chars_to_string(chars: &[c_char]) -> String {
+pub fn c_chars_to_string(chars: &[c_char]) -> String {
   let bytes: Vec<u8> = chars.iter().take_while(|&&c| c != 0).map(|&c| c as u8).collect();
   String::from_utf8_lossy(&bytes).into_owned()
 }
@@ -243,7 +245,7 @@ fn list_pids(pids: &mut Vec<i32>) {
 }
 
 /// `PROC_PIDTBSDINFO` of `pid`; `None` for other users' processes and gone ones.
-pub(crate) fn bsd_info(pid: i32) -> Option<libc::proc_bsdinfo> {
+pub fn bsd_info(pid: i32) -> Option<libc::proc_bsdinfo> {
   let mut info: libc::proc_bsdinfo = unsafe { mem::zeroed() };
   let size = mem::size_of::<libc::proc_bsdinfo>() as c_int;
   let ptr = &mut info as *mut libc::proc_bsdinfo as *mut c_void;
@@ -591,6 +593,12 @@ pub struct ProcSampler {
   last: Option<Instant>,
   /// Time since the first sample, in ns.
   clock_ns: u64,
+}
+
+impl Default for ProcSampler {
+  fn default() -> Self {
+    Self::new()
+  }
 }
 
 impl ProcSampler {

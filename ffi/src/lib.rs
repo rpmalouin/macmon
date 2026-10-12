@@ -8,6 +8,7 @@ use std::ffi::{CString, c_char, c_void};
 use std::ptr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use macmon::procs::ProcSampler;
 use macmon::{Metrics, Sampler};
 
 /// Shortest polling interval the sampler accepts, as in the CLI.
@@ -175,6 +176,95 @@ pub unsafe extern "C" fn macmon_free(ptr: *mut c_char) {
   unsafe { drop(CString::from_raw(ptr)) };
 }
 
+/// One row of the process list, as the C side reads it.
+#[derive(serde::Serialize)]
+struct ProcRow<'a> {
+  pid: i32,
+  name: &'a str,
+  user: &'a str,
+  /// 100% is one busy core, as in Activity Monitor.
+  cpu_pct: f32,
+  mem_bytes: u64,
+  /// Watts, or null when the energy counter is not readable: another user's process, or macOS
+  /// before 13.
+  power_w: Option<f32>,
+  /// Share of the interval the GPU spent on the process.
+  gpu_pct: f32,
+}
+
+/// The process sampler behind `sampler`.
+///
+/// # Safety
+///
+/// `sampler` must be null or a pointer returned by [`macmon_procs_new`] that has not been freed.
+unsafe fn as_procs<'a>(sampler: *mut c_void) -> Option<&'a mut ProcSampler> {
+  if sampler.is_null() {
+    set_error("process sampler is null");
+    return None;
+  }
+
+  Some(unsafe { &mut *sampler.cast::<ProcSampler>() })
+}
+
+/// Create a process sampler, or return null with the reason in [`macmon_last_error`].
+#[unsafe(no_mangle)]
+pub extern "C" fn macmon_procs_new() -> *mut c_void {
+  clear_error();
+  Box::into_raw(Box::new(ProcSampler::new())).cast()
+}
+
+/// Sample every process and return the busiest `top_n` as a JSON array, to be released with
+/// [`macmon_free`]. `top_n` of 0 returns every process. Null on failure.
+///
+/// CPU and power are rates since the previous call, so a sampler's first call reports them as zero.
+///
+/// # Safety
+///
+/// `sampler` must be a pointer returned by [`macmon_procs_new`] that has not been freed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn macmon_procs_next(sampler: *mut c_void, top_n: u32) -> *mut c_char {
+  let Some(sampler) = (unsafe { as_procs(sampler) }) else {
+    return ptr::null_mut();
+  };
+
+  let mut processes = sampler.sample();
+  processes.sort_by(|a, b| b.cpu_pct.total_cmp(&a.cpu_pct));
+  if top_n > 0 {
+    processes.truncate(top_n as usize);
+  }
+
+  let rows: Vec<ProcRow<'_>> = processes
+    .iter()
+    .map(|process| ProcRow {
+      pid: process.pid,
+      name: &process.name,
+      user: &process.user,
+      cpu_pct: process.cpu_pct,
+      mem_bytes: process.mem_bytes,
+      power_w: process.power_w,
+      gpu_pct: process.gpu_pct,
+    })
+    .collect();
+
+  into_json(&rows, "processes")
+}
+
+/// Release a process sampler. Null is ignored.
+///
+/// # Safety
+///
+/// `sampler` must be null or a pointer returned by [`macmon_procs_new`] that has not been freed
+/// yet.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn macmon_procs_free(sampler: *mut c_void) {
+  if sampler.is_null() {
+    return;
+  }
+
+  unsafe { drop(Box::from_raw(sampler.cast::<ProcSampler>())) };
+  clear_error();
+}
+
 #[cfg(test)]
 mod tests {
   use std::ffi::CStr;
@@ -273,5 +363,78 @@ mod tests {
     assert!(error_text().is_empty(), "free(null) set an error: {}", error_text());
 
     unsafe { macmon_sampler_free(sampler) };
+  }
+
+  /// Take the whole process list, as the C side would, and hand back the decoded array.
+  fn processes(sampler: *mut c_void, top_n: u32) -> Vec<serde_json::Value> {
+    // The first call of a sampler is a baseline: CPU and power are rates since the previous one.
+    let warmup = unsafe { macmon_procs_next(sampler, 0) };
+    unsafe { macmon_free(warmup) };
+
+    let json = unsafe { macmon_procs_next(sampler, top_n) };
+    assert!(!json.is_null(), "no processes: {}", error_text());
+    let text = unsafe { CStr::from_ptr(json) }.to_string_lossy().into_owned();
+    unsafe { macmon_free(json) };
+
+    let rows: serde_json::Value = serde_json::from_str(&text).expect("the document is JSON");
+    rows.as_array().expect("an array of rows").clone()
+  }
+
+  #[test]
+  fn processes_come_back_busiest_first_with_the_documented_keys() {
+    let sampler = macmon_procs_new();
+    assert!(!sampler.is_null());
+
+    let rows = processes(sampler, 8);
+    assert!(!rows.is_empty(), "a machine with no processes?");
+    assert!(rows.len() <= 8, "top_n 8 returned {} rows", rows.len());
+
+    for key in ["pid", "name", "user", "cpu_pct", "mem_bytes", "power_w", "gpu_pct"] {
+      assert!(rows[0].get(key).is_some(), "missing {key}: {}", rows[0]);
+    }
+
+    let cpus: Vec<f64> = rows.iter().filter_map(|row| row["cpu_pct"].as_f64()).collect();
+    assert_eq!(cpus.len(), rows.len(), "every row carries a cpu_pct");
+    assert!(cpus.windows(2).all(|pair| pair[0] >= pair[1]), "not busiest first: {cpus:?}");
+
+    unsafe { macmon_procs_free(sampler) };
+  }
+
+  #[test]
+  fn every_process_carries_a_name_and_a_user() {
+    let sampler = macmon_procs_new();
+    assert!(!sampler.is_null());
+
+    for row in processes(sampler, 0) {
+      assert!(row["name"].as_str().is_some_and(|name| !name.is_empty()), "no name: {row}");
+      assert!(row["user"].as_str().is_some_and(|user| !user.is_empty()), "no user: {row}");
+    }
+
+    unsafe { macmon_procs_free(sampler) };
+  }
+
+  /// This test's own process reads its energy counter, so its row carries watts rather than null.
+  #[test]
+  fn our_own_row_carries_a_power_reading() {
+    let sampler = macmon_procs_new();
+    assert!(!sampler.is_null());
+
+    let rows = processes(sampler, 0);
+    let own = rows
+      .iter()
+      .find(|row| row["pid"].as_i64() == Some(std::process::id() as i64))
+      .unwrap_or_else(|| panic!("this process is not in the list of {} rows", rows.len()));
+    assert!(own["power_w"].is_number(), "no power for our own process: {own}");
+
+    unsafe { macmon_procs_free(sampler) };
+  }
+
+  #[test]
+  fn a_null_process_sampler_reports_an_error_instead_of_crashing() {
+    assert!(unsafe { macmon_procs_next(ptr::null_mut(), 8) }.is_null());
+    assert!(!error_text().is_empty(), "no error after sampling a null sampler");
+
+    unsafe { macmon_procs_free(ptr::null_mut()) };
+    assert!(!error_text().is_empty(), "freeing null should not clear an error it did not set");
   }
 }

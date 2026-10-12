@@ -40,6 +40,26 @@ public struct DashboardSection: Equatable, Identifiable {
   }
 }
 
+/// One line of the process list. Its own type rather than a `DashboardRow`: the names need the
+/// width the metric rows give to a bar, and there are three numbers beside them.
+public struct ProcessRow: Equatable, Identifiable {
+  public let id: String
+  public let name: String
+  /// One decimal, as the TUI shows it.
+  public let cpu: String
+  /// Watts, or `—` when the energy counter is not readable.
+  public let power: String
+  public let gpu: String
+
+  public init(id: String, name: String, cpu: String, power: String, gpu: String) {
+    self.id = id
+    self.name = name
+    self.cpu = cpu
+    self.power = power
+    self.gpu = gpu
+  }
+}
+
 /// What the panel shows for one sample.
 ///
 /// Pure: the view renders this and nothing here needs a screen, so the rows, the bars and what is
@@ -50,13 +70,26 @@ public struct Dashboard: Equatable {
   /// The chip's core tiers and the total power, as `4E 6P · 12.40 W`.
   public let detail: String?
   public let sections: [DashboardSection]
+  /// The busiest processes, as the ABI returns them: busiest first.
+  public let processes: [ProcessRow]
 
-  public init(sample: Sample, soc: SocInfo?) {
+  public init(sample: Sample, soc: SocInfo?, processes: [Process] = [], topProcesses: Int = 8) {
     title = soc?.chipName ?? "macmon"
     let parts = [Self.tiers(sample), Self.loadedPower(sample)].compactMap { $0 }
     detail = parts.isEmpty ? nil : parts.joined(separator: " · ")
     sections = [Self.cpu(sample), Self.gpu(sample), Self.power(sample), Self.memory(sample), Self.thermal(sample)]
       .compactMap { $0 }
+    self.processes = processes.prefix(max(0, topProcesses)).map(Self.processRow)
+  }
+
+  /// One process, formatted. The ABI sorts the list by CPU, so this keeps its order.
+  static func processRow(_ process: Process) -> ProcessRow {
+    ProcessRow(
+      id: "\(process.pid)",
+      name: process.name,
+      cpu: String(format: "%.1f%%", process.cpuPct),
+      power: process.powerW.map(watts) ?? "—",
+      gpu: String(format: "%.0f%%", process.gpuPct))
   }
 
   /// CPU: the whole package, then one row per tier.

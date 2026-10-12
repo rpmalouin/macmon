@@ -30,7 +30,10 @@ app = [
   "dep:num-traits",
   "dep:ratatui",
   "dep:serde-inline-default",
+  "procs",
 ]
+# Per-process sampling, from libproc, `ps` and the IORegistry: the TUI and the C ABI (ffi/) use it.
+procs = []
 
 [lints.rust]
 non_camel_case_types = "allow"
