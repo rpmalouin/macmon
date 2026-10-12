@@ -8,11 +8,14 @@ final class StatusLabelTests: XCTestCase {
     XCTAssertEqual(label.text, "CPU 12%  MEM 47%")
   }
 
-  func testClearBelowFortyCpuAndEightyEightMemory() {
+  func testMemoryAloneDoesNotColourTheDotBelowNinetyFive() {
     XCTAssertEqual(StatusLabel(cpuPercent: 39, memoryPercent: 88).load, .clear)
     XCTAssertEqual(StatusLabel(cpuPercent: 0, memoryPercent: 0).load, .clear)
-    // A resident local model reads 88-90% "used"; that is not a red dot.
+    // A resident local model reads 87-92% "used" as its normal operating point: not a colour at all,
+    // or the dot would flip every few seconds as the model's footprint moves.
     XCTAssertEqual(StatusLabel(cpuPercent: 5, memoryPercent: 88).load, .clear)
+    XCTAssertEqual(StatusLabel(cpuPercent: 5, memoryPercent: 92).load, .clear)
+    XCTAssertEqual(StatusLabel(cpuPercent: 5, memoryPercent: 95).load, .clear)
   }
 
   func testModerateFromFortyCpu() {
@@ -21,15 +24,15 @@ final class StatusLabelTests: XCTestCase {
     XCTAssertEqual(StatusLabel(cpuPercent: 75, memoryPercent: 10).load, .moderate)
   }
 
-  func testModerateAboveEightyEightMemory() {
-    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 89).load, .moderate)
-    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 93).load, .moderate)
+  func testMemoryAloneNeverMakesItModerate() {
+    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 89).load, .clear)
+    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 94).load, .clear)
   }
 
-  func testHeavyAboveSeventyFiveCpuOrNinetyThreeMemory() {
+  func testHeavyAboveSeventyFiveCpuOrNinetyFiveMemory() {
     XCTAssertEqual(StatusLabel(cpuPercent: 76, memoryPercent: 10).load, .heavy)
     XCTAssertEqual(StatusLabel(cpuPercent: 100, memoryPercent: 10).load, .heavy)
-    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 94).load, .heavy)
+    XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 96).load, .heavy)
   }
 
   func testTheCompactFormDropsTheMemoryFromTheTextButNotFromTheDot() {
@@ -42,7 +45,7 @@ final class StatusLabelTests: XCTestCase {
 
     // Memory leaves the text, not the thresholds: the dot still shows a machine under pressure.
     let busy = Sample.fixture(
-      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 95, swapTotal: 0, swapUsage: 0))
+      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 96, swapTotal: 0, swapUsage: 0))
     XCTAssertEqual(StatusLabel(sample: busy, compact: true).text, "12%")
     XCTAssertEqual(StatusLabel(sample: busy, compact: true).load, .heavy)
   }
@@ -51,7 +54,7 @@ final class StatusLabelTests: XCTestCase {
     let sample = Sample.fixture(
       cpuScaledRatio: 0.42,
       memory: .init(ramTotal: 100, ramUsage: 90, swapTotal: 0, swapUsage: 0))
-    XCTAssertEqual(StatusLabel(sample: sample).load, .moderate, "90% used is not yet a red dot")
+    XCTAssertEqual(StatusLabel(sample: sample).load, .moderate, "the CPU is over 40%, the memory is not")
     XCTAssertEqual(StatusLabel(sample: sample).text, "CPU 42%  MEM 90%")
   }
 }
