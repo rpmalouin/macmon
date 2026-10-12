@@ -42,7 +42,8 @@ use core_foundation::number::{
   CFNumber, CFNumberCreate, CFNumberGetValue, CFNumberRef, kCFNumberSInt32Type, kCFNumberSInt64Type,
 };
 use core_foundation::string::{
-  CFString, CFStringCreateWithBytesNoCopy, CFStringGetCString, CFStringRef, kCFStringEncodingUTF8,
+  CFString, CFStringCreateWithBytesNoCopy, CFStringGetCString, CFStringGetLength,
+  CFStringGetMaximumSizeForEncoding, CFStringRef, kCFStringEncodingUTF8,
 };
 use serde::Serialize;
 
@@ -80,12 +81,21 @@ pub fn cfstr(val: &str) -> CFStringRef {
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 /// Convert a CoreFoundation string reference into a Rust `String`.
+///
+/// Values come from the system and from devices (a HID `Product` report, for one) and can be
+/// longer than any fixed buffer, so the buffer is sized from the string itself. A value that
+/// cannot be represented as UTF-8 yields an empty `String` rather than aborting the process.
 pub fn from_cfstr(val: CFStringRef) -> String {
   unsafe {
-    let mut buf = Vec::with_capacity(128);
-    if CFStringGetCString(val, buf.as_mut_ptr(), 128, kCFStringEncodingUTF8) == 0 {
-      panic!("Failed to convert CFString to CString");
+    let len = CFStringGetLength(val);
+    // Worst-case UTF-8 width of `len` UTF-16 units, plus the terminating nul.
+    let size = (CFStringGetMaximumSizeForEncoding(len, kCFStringEncodingUTF8) + 1).max(1);
+    let mut buf = vec![0i8; size as usize];
+
+    if CFStringGetCString(val, buf.as_mut_ptr(), size, kCFStringEncodingUTF8) == 0 {
+      return String::new();
     }
+
     std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()
   }
 }
@@ -799,7 +809,7 @@ pub(crate) fn hw_native() -> WithError<HwInfo> {
 
 /// Hardware and display report of `system_profiler` (~250-300ms subprocess spawn).
 pub(crate) fn profiler_report() -> WithError<serde_json::Value> {
-  let out = std::process::Command::new("system_profiler")
+  let out = std::process::Command::new("/usr/sbin/system_profiler")
     .args(["SPHardwareDataType", "SPDisplaysDataType", "-json"])
     .output()?;
   let out = std::str::from_utf8(&out.stdout)?;
@@ -1355,6 +1365,9 @@ impl IOHIDSensors {
         x => x,
       };
 
+      // `Copy`-prefixed functions return a +1 reference and this runs on every sample, so both
+      // the key and the property must be released.
+      let product = cfstr("Product");
       let mut items = vec![] as Vec<(String, f32)>;
       for i in 0..CFArrayGetCount(services) {
         let sc = match CFArrayGetValueAtIndex(services, i) as IOHIDServiceClientRef {
@@ -1362,9 +1375,13 @@ impl IOHIDSensors {
           x => x,
         };
 
-        let name = match IOHIDServiceClientCopyProperty(sc, cfstr("Product")) {
+        let name = match IOHIDServiceClientCopyProperty(sc, product) {
           x if x.is_null() => continue,
-          x => from_cfstr(x),
+          x => {
+            let name = from_cfstr(x);
+            CFRelease(x as _);
+            name
+          }
         };
 
         let event = match IOHIDServiceClientCopyEvent(sc, kIOHIDEventTypeTemperature, 0, 0) {
@@ -1382,6 +1399,7 @@ impl IOHIDSensors {
 
       CFRelease(services as _);
       CFRelease(system as _);
+      CFRelease(product as _);
 
       items.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
       items
@@ -1654,6 +1672,17 @@ impl Drop for SMC {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn long_cfstring_converts_without_panicking() {
+    // Device-supplied values (a HID `Product`) can exceed any fixed buffer.
+    for value in ["x".repeat(255), "å".repeat(200)] {
+      let cf = cfstr(&value);
+      let converted = from_cfstr(cf);
+      unsafe { CFRelease(cf as _) };
+      assert_eq!(converted, value);
+    }
+  }
 
   #[test]
   fn clpc_descriptors_preserve_driver_counter_ids_and_nanojoule_units() {

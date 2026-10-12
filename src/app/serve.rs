@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, RwLock};
 use std::thread;
+use std::time::Duration;
 
 use macmon::{Metrics, SocInfo};
 
@@ -155,7 +156,18 @@ fn escape_xml(value: &str) -> String {
     .replace('\'', "&apos;")
 }
 
+/// A client that opens a connection and then stops sending would hold its thread for as long as
+/// it likes, so a request and its response both have a deadline.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+fn set_request_timeouts(stream: &TcpStream) {
+  let _ = stream.set_read_timeout(Some(REQUEST_TIMEOUT));
+  let _ = stream.set_write_timeout(Some(REQUEST_TIMEOUT));
+}
+
 fn handle_conn(mut stream: TcpStream, shared: SharedMetrics, soc: Arc<SocInfo>) {
+  set_request_timeouts(&stream);
+
   let path = match read_path(&mut stream) {
     Some(p) => p,
     None => return,
@@ -197,7 +209,7 @@ pub fn launchd(host: &str, port: u16, install: bool) -> Result<(), Box<dyn std::
   let plist_path = format!("{home}/Library/LaunchAgents/com.macmon.plist");
 
   if !install {
-    let _ = std::process::Command::new("launchctl")
+    let _ = std::process::Command::new("/bin/launchctl")
       .args(["unload", &plist_path])
       .stdout(std::process::Stdio::null())
       .stderr(std::process::Stdio::null())
@@ -240,14 +252,14 @@ pub fn launchd(host: &str, port: u16, install: bool) -> Result<(), Box<dyn std::
   std::fs::create_dir_all(&agents_dir)?;
 
   // unload silently in case it's already running
-  let _ = std::process::Command::new("launchctl")
+  let _ = std::process::Command::new("/bin/launchctl")
     .args(["unload", &plist_path])
     .stdout(std::process::Stdio::null())
     .stderr(std::process::Stdio::null())
     .status();
 
   std::fs::write(&plist_path, plist)?;
-  std::process::Command::new("launchctl").args(["load", &plist_path]).status()?;
+  std::process::Command::new("/bin/launchctl").args(["load", &plist_path]).status()?;
   eprintln!("macmon service installed: {plist_path}");
   eprintln!("configured to serve on {}", serve_url(host, port));
 
@@ -277,9 +289,26 @@ pub fn run(
 
 #[cfg(test)]
 mod tests {
+  use std::net::{TcpListener, TcpStream};
+
   use macmon::{CpuTierMetrics, Metrics, SocInfo};
 
-  use super::{escape_label_value, escape_xml, serve_url, to_json, to_prometheus};
+  use super::{
+    REQUEST_TIMEOUT, escape_label_value, escape_xml, serve_url, set_request_timeouts, to_json,
+    to_prometheus,
+  };
+
+  #[test]
+  fn connections_get_request_timeouts() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let _client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+    let (server, _) = listener.accept().unwrap();
+
+    set_request_timeouts(&server);
+
+    assert_eq!(server.read_timeout().unwrap(), Some(REQUEST_TIMEOUT));
+    assert_eq!(server.write_timeout().unwrap(), Some(REQUEST_TIMEOUT));
+  }
 
   #[test]
   fn unavailable_temperature_has_no_prometheus_gauge() {

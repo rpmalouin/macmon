@@ -30,6 +30,19 @@ from clpc_binary import Image, discover
 
 OUT = Path(__file__).resolve().parent.parent / "out" / "clpc-static"
 COMPONENTS = ("CPU", "GPU", "ANE")
+
+
+def safe_name(value, what="identifier"):
+    """Directory and file names under OUT come from an index or a BuildManifest.
+
+    Reject a value that would leave OUT: no separators, no parent directory.
+    """
+    value = str(value)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._,+()-]*", value):
+        raise ValueError(f"Invalid {what}: {value!r}")
+    return value
+
+
 APPLE_CATALOG = (
     "https://mesu.apple.com/assets/macos/com_apple_macOSIPSW/com_apple_macOSIPSW.xml"
 )
@@ -142,7 +155,9 @@ def decompress(source):
 
 def scan(release):
     url = release["url"]
-    cache = OUT / release.get("build", hashlib.sha256(url.encode()).hexdigest()[:12])
+    cache = OUT / safe_name(
+        release.get("build", hashlib.sha256(url.encode()).hexdigest()[:12]), "build"
+    )
     cache.mkdir(parents=True, exist_ok=True)
     source, manifest_path = cache / "source.json", cache / "BuildManifest.plist"
     if not source.exists():
@@ -242,7 +257,9 @@ def scan(release):
         and not result["failures"]
         and all(d["status"] == "identified" for d in result["drivers"])
     )
-    dest = OUT / f"catalog-{version}-{build}.json"
+    dest = OUT / (
+        f"catalog-{safe_name(version, 'version')}-{safe_name(build, 'build')}.json"
+    )
     save(dest, result)
     lines = ["driver\tCPU\tGPU\tANE\tstatus"] + [
         "\t".join(
@@ -450,7 +467,7 @@ def archive_releases(cache):
 
     def device_rows(device):
         identifier = device["identifier"]
-        path = cache / (identifier + ".json")
+        path = cache / (safe_name(identifier, "device identifier") + ".json")
         # Short-lived index cache; no signing filter, since offline analysis also
         # needs unsigned releases. Apple still hosts their restore images.
         if not path.exists() or time.time() - path.stat().st_mtime > 86400:
@@ -513,7 +530,10 @@ def main():
         result = compare(
             json.loads(args.old.read_text()), json.loads(args.new.read_text())
         )
-        dest = OUT / f"compare-{result['from']}-{result['to']}.json"
+        dest = OUT / (
+            "compare-"
+            f"{safe_name(result['from'], 'build')}-{safe_name(result['to'], 'build')}.json"
+        )
         save(dest, result)
         print(json.dumps(result, indent=2))
         print(dest)
