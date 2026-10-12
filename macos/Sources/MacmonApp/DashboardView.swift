@@ -8,6 +8,8 @@ final class PanelModel {
   /// The history block's series, nil while the window is too short to draw.
   var sparkline: Sparkline?
   var failure: String?
+  /// What the panel shows; the right-click menu writes it.
+  var preferences = Preferences()
 }
 
 /// The panel behind the status item.
@@ -36,11 +38,11 @@ struct DashboardView: View {
       let tail = sections.drop { $0.id == "cpu" || $0.id == "gpu" }
 
       ForEach(head) { section in SectionView(section: section) }
-      if let sparkline = model.sparkline {
+      if model.preferences.showsHistory, let sparkline = model.sparkline {
         HistoryView(sparkline: sparkline)
       }
       ForEach(tail) { section in SectionView(section: section) }
-      if let processes = model.dashboard?.processes, !processes.isEmpty {
+      if model.preferences.showsProcesses, let processes = model.dashboard?.processes, !processes.isEmpty {
         ProcessSectionView(rows: processes)
       }
 
@@ -49,10 +51,21 @@ struct DashboardView: View {
         Button("Quit") { NSApplication.shared.terminate(nil) }
           .font(.system(size: 10))
         Spacer()
+        Text(Self.version)
+          .font(.system(size: 9))
+          .foregroundStyle(.secondary)
       }
     }
     .padding(12)
     .frame(width: 300, alignment: .leading)
+  }
+
+  /// The bundle's version, as `Macmon 0.1.0`.
+  private static var version: String {
+    let info = Bundle.main.infoDictionary
+    let name = info?["CFBundleName"] as? String ?? "macmon"
+    let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+    return "\(name) \(version)"
   }
 }
 

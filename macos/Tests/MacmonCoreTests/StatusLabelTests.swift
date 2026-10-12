@@ -30,6 +30,21 @@ final class StatusLabelTests: XCTestCase {
     XCTAssertEqual(StatusLabel(cpuPercent: 10, memoryPercent: 86).load, .heavy)
   }
 
+  func testTheCompactFormDropsTheMemoryFromTheTextButNotFromTheDot() {
+    let sample = Sample.fixture(
+      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 47, swapTotal: 0, swapUsage: 0))
+
+    XCTAssertEqual(StatusLabel(sample: sample).text, "CPU 12%  MEM 47%")
+    XCTAssertEqual(StatusLabel(sample: sample, compact: true).text, "12%")
+    XCTAssertEqual(StatusLabel(sample: sample, compact: true).load, .clear)
+
+    // Memory leaves the text, not the thresholds: the dot still shows a machine under pressure.
+    let busy = Sample.fixture(
+      cpuScaledRatio: 0.12, memory: .init(ramTotal: 100, ramUsage: 90, swapTotal: 0, swapUsage: 0))
+    XCTAssertEqual(StatusLabel(sample: busy, compact: true).text, "12%")
+    XCTAssertEqual(StatusLabel(sample: busy, compact: true).load, .heavy)
+  }
+
   func testLoadFromASampleUsesItsMemoryFraction() {
     let sample = Sample.fixture(
       cpuScaledRatio: 0.42,

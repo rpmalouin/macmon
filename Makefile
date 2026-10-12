@@ -24,7 +24,7 @@ build:
 update:
 	cargo upgrade -i
 
-.PHONY: loc bench remote macapp macapp-run macapp-test
+.PHONY: loc bench remote macapp macapp-run macapp-test macapp-icon macapp-install macapp-uninstall
 
 loc: # production lines, tests excluded; REF=origin/main compares with a git ref
 	@python3 scripts/loc.py $(REF)
@@ -49,3 +49,12 @@ macapp-run: # build the app and open it
 
 macapp-test: # the app's Swift tests
 	scripts/app-build.sh test
+
+macapp-icon: # draw and pack the app icon (scripts/make-icon.sh)
+	scripts/make-icon.sh
+
+macapp-install: # build, then copy the app to /Applications (or ~/Applications)
+	scripts/app-build.sh install
+
+macapp-uninstall: # remove the installed app
+	scripts/app-build.sh uninstall

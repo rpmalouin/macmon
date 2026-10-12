@@ -14,11 +14,11 @@ public struct StatusLabel: Equatable {
   public let text: String
   public let load: Load
 
-  /// Read one sample, as `CPU 12%  MEM 47%`.
-  public init(sample: Sample) {
+  /// Read one sample, as `CPU 12%  MEM 47%`, or as `12%` when the label is compact.
+  public init(sample: Sample, compact: Bool = false) {
     let cpu = (sample.cpuScaledRatio * 100).rounded()
     let memory = (sample.memory.ramFraction * 100).rounded()
-    text = "CPU \(Int(cpu))%  MEM \(Int(memory))%"
+    text = compact ? "\(Int(cpu))%" : "CPU \(Int(cpu))%  MEM \(Int(memory))%"
     load = Self.load(cpuPercent: cpu, memoryPercent: memory)
   }
 

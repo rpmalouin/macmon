@@ -12,16 +12,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private let monitor = Monitor()
   private let panel = PanelModel()
   private let popover = NSPopover()
+  private let preferencesStore = PreferencesStore()
+  private var preferences = Preferences()
   private var item: NSStatusItem?
   /// The last minute of samples, for the panel's history block.
   private var history = History()
+
+  private lazy var preferencesMenu = PreferencesMenu(
+    current: { [weak self] in self?.preferences ?? Preferences() },
+    apply: { [weak self] in self?.apply($0) })
 
   private var debug: Bool { ProcessInfo.processInfo.environment["MACMON_APP_DEBUG"] != nil }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     item.button?.target = self
-    item.button?.action = #selector(togglePopover)
+    item.button?.action = #selector(statusItemClicked)
+    item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
     self.item = item
 
     let controller = NSHostingController(rootView: DashboardView(model: panel))
@@ -35,12 +42,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     monitor.onUpdate = { [weak self] in self?.refresh() }
+    // Loading does not save: the app should not create a preferences file just by starting.
+    apply(preferencesStore.current, save: false)
+
+    // MACMON_APP_DEBUG_COMPACT / _MINIMAL apply a setting at launch through the same path the menu
+    // takes, so what the panel and the label draw can be checked without a click.
+    var debugPreferences = preferences
+    if ProcessInfo.processInfo.environment["MACMON_APP_DEBUG_COMPACT"] != nil {
+      debugPreferences.compactLabel = true
+    }
+    if ProcessInfo.processInfo.environment["MACMON_APP_DEBUG_MINIMAL"] != nil {
+      debugPreferences.showsHistory = false
+      debugPreferences.showsProcesses = false
+    }
+    if debugPreferences != preferences { apply(debugPreferences, save: false) }
+
     monitor.start()
     refresh()
   }
 
   func applicationWillTerminate(_ notification: Notification) {
     monitor.stop()
+  }
+
+  /// Remember a change from the menu, apply it to the sampler and the panel, and redraw.
+  ///
+  /// `save` is false for the debug switches below: a debug run must not leave the app starting
+  /// compact because a test set it once.
+  private func apply(_ next: Preferences, save: Bool = true) {
+    preferences = next
+    if save { preferencesStore.save(next) }
+    panel.preferences = next
+    monitor.setInterval(next.intervalMs)
+    refresh()
+  }
+
+  /// A left click opens the panel, a right click the preferences menu.
+  @objc private func statusItemClicked() {
+    if NSApp.currentEvent?.type == .rightMouseUp {
+      guard let button = item?.button else { return }
+      preferencesMenu.build()
+        .popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 4), in: button)
+    } else {
+      togglePopover()
+    }
   }
 
   @objc private func togglePopover() {
@@ -56,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   /// Draw the last sample: the status label, and the panel's rows.
   private func refresh() {
-    let label = monitor.sample.map(StatusLabel.init(sample:))
+    let label = monitor.sample.map { StatusLabel(sample: $0, compact: preferences.compactLabel) }
     item?.button?.attributedTitle = Self.attributedTitle(label)
 
     if let sample = monitor.sample {
