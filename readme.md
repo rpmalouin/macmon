@@ -1,214 +1,155 @@
-# `macmon` – Mac Monitor
+# `macmon` — a menu bar monitor for Apple Silicon
 
 <div align="center">
 
-[<img src="https://badges.ws/github/assets-dl/vladkens/macmon" />](https://github.com/vladkens/macmon/releases)
-[<img src="https://badges.ws/github/release/vladkens/macmon" />](https://github.com/vladkens/macmon/releases)
-[<img src="https://badges.ws/github/license/vladkens/macmon" />](https://github.com/vladkens/macmon/blob/main/LICENSE)
-[<img src="https://badges.ws/badge/-/buy%20me%20a%20coffee/ff813f?icon=buymeacoffee&label" alt="donate" />](https://buymeacoffee.com/vladkens)
+[<img src="https://badges.ws/github/license/rpmalouin/macmon" />](LICENSE)
 
 </div>
 
-`macmon` is a sudoless performance monitor for Apple Silicon Macs. It reads real-time CPU / GPU / ANE power usage, temperatures, and memory stats through a private macOS API — the same data `powermetrics` exposes — without requiring root access.
+This is my fork of [`vladkens/macmon`](https://github.com/vladkens/macmon), the sudoless Apple Silicon
+monitor. Everything upstream has — the terminal UI, `pipe`, `serve`, `stress`, `find-clpc`, and the Rust
+library — is here and unchanged. What this fork adds is a **native macOS menu bar app** on the same
+sampler: a status item and a panel, with no sudo, no privileged helper and no daemon.
+
+[FORK.md](FORK.md) covers what diverges from upstream, why, and how the two are kept in step.
 
 <div align="center">
-  <img src="https://github.com/vladkens/macmon/blob/assets/macmon-v0.9.png?raw=true" alt="preview" />
+  <img src="docs/app.png" alt="macmon in the menu bar, with the panel open" width="328">
 </div>
 
-## 🌟 Features
+## 🖥️ The app
 
-- 🚫 Runs without sudo
-- ⚡ Real-time CPU / GPU / ANE power usage
-- 📊 CPU frequency-scaled and active ratios per cluster
-- 💾 RAM / Swap usage
-- 📈 Historical charts with average and max values
-- 🌡️ Average CPU / GPU temperature
-- 📋 Process list with per-process CPU, memory, power and GPU usage
-- 🎨 Follows your terminal's color scheme
-- 🪟 Can be displayed in a small window
-- 🦀 Written in Rust
+A status item reading `CPU 5%  MEM 87%` and a dot — green, yellow or red — with a panel behind a left
+click. It shows the same numbers the terminal UI shows, from the same sampler, so the app, the TUI,
+`pipe` and `serve` cannot disagree.
 
-## 📥 Installation
+- **CPU** — combined usage, then a row per core type (`P`, `S`) with its frequency
+- **GPU** — usage and frequency
+- **History** — the last minute of CPU and GPU usage as a chart, with a gap where the machine stopped
+  reporting (sleep, a closed lid) rather than a line across it
+- **Power** — CPU, GPU, ANE, DRAM, GPU RAM, their total, and the machine's total system power
+- **Memory** — used / total, what is still available, and swap
+- **Temperature** — CPU and GPU in °C, and each fan in rpm
+- **Processes** — the eight busiest, with CPU, power where the process reports it, and GPU usage
 
-Install [`macmon`](https://formulae.brew.sh/formula/macmon) using [brew](https://brew.sh/):
+A right click opens the settings, `Quit macmon` among them. The panel states the SoC, its core layout and
+its total power draw at the top, and the drawing follows the system appearance.
 
-```sh
-brew install macmon
-```
-
-<details>
-<summary>Other installation methods</summary>
-
-Install using [MacPorts](https://ports.macports.org/port/macmon/):
+### Install
 
 ```sh
-sudo port install macmon
+git clone https://github.com/rpmalouin/macmon && cd macmon
+make macapp-install
 ```
 
-Install using [Cargo](https://crates.io/crates/macmon):
+That builds `dist/Macmon.app`, signs it ad-hoc, and copies it to `/Applications` (or `~/Applications`
+when `/Applications` is not writable). Start it from there or from Spotlight.
+
+Needs macOS 14 or newer, Xcode or the Command Line Tools with Swift 5.9, and a Rust toolchain. Nothing
+here needs sudo, and the app installs no privileged helper.
+
+To start it at login, use **Start at login** in the right-click menu: it writes a LaunchAgent at
+`~/Library/LaunchAgents/com.ronmalouin.macmon.plist`, which runs the app at your next login. The agent
+restarts the app if it dies badly and leaves a normal quit alone.
+
+### The dot
+
+The dot is the whole point of the status item, so it is judged on **memory pressure, not memory in use**:
+
+| dot | means |
+| --- | --- |
+| 🟢 green | CPU at or below 75% **and** more than 10% of memory available |
+| 🟡 yellow | CPU above 40%, or 10% or less of memory available |
+| 🔴 red | CPU above 75%, or under 5% of memory available |
+
+"Available" is free + inactive + purgeable + speculative memory: what the kernel can still hand out. The
+number people usually mean by "memory used" (Activity Monitor's, and this app's `MEM` figure) includes
+reclaimable `inactive` pages, so it sits at 87–92% on this machine — a 35 GB local model is resident —
+while nothing is wrong. A dot keyed to that figure either fires constantly or flaps. This one reads
+15–16% available with the model loaded, which is clear of the yellow line by design.
+
+### Settings
+
+Right-click the status item:
+
+- **Update every** — 1, 2 or 5 seconds
+- **Compact label** — `12%` instead of `CPU 12%  MEM 47%`
+- **Show history**, **Show processes** — turn the panel's lower blocks off
+- **Start at login**
+- **Quit macmon**
+
+Settings live in `UserDefaults`, deliberately not in `~/.config/macmon.json`: that file belongs to the
+terminal UI, which drops any field it does not recognise when it saves.
+
+### Build targets
 
 ```sh
-cargo install macmon
+make macapp            # build dist/Macmon.app, ad-hoc signed
+make macapp-run        # build and open it
+make macapp-test       # the app's Swift tests
+make macapp-icon       # redraw the app icon
+make macapp-install    # build, then copy it to /Applications
+make macapp-uninstall  # remove the installed copy
 ```
 
-Install using [Nix](https://search.nixos.org/packages?show=macmon&from=0&size=50&type=packages&query=macmon):
+The app is SwiftUI + AppKit in [`macos/`](macos), on the sampler behind the C ABI in [`ffi/`](ffi). The
+sampling loop runs on its own thread and the panel draws the most recent sample; the app never blocks on
+a read.
+
+## 🚀 The rest of it (shared with upstream)
+
+The command line is upstream's, unchanged. Run `macmon` for the terminal UI, and `macmon --help` for the
+flags.
 
 ```sh
-nix-env -i macmon
+macmon                 # the interactive terminal UI; press ? in it for the keys
+macmon pipe -s 10 -i 500 | jq    # newline-delimited JSON samples
+macmon serve                     # HTTP: /json and /metrics for Prometheus
+macmon serve --install           # the same, as a launchd agent on port 9090
+macmon stress cpu --duration 30  # generate load while watching the numbers
+macmon find-clpc                 # find the CLPC power counters under CPU/GPU/ANE load
+macmon debug                     # print what the sampler read and what it made of it
 ```
 
-</details>
+Two endpoints from `serve`:
 
-## 🚀 Usage
+| Endpoint       | Format     | Description                                                       |
+| -------------- | ---------- | ----------------------------------------------------------------- |
+| `GET /json`    | JSON       | Current metrics snapshot (same format as `pipe --soc-info`)        |
+| `GET /metrics` | Prometheus | Metrics in [Prometheus text format][prom]                          |
 
-```sh
-Usage: macmon [OPTIONS] [COMMAND]
+[prom]: https://prometheus.io/docs/instrumenting/exposition_formats/
 
-Commands:
-  pipe    Output metrics in JSON format
-  serve   Serve metrics over HTTP
-  debug   Print debug information
-  stress  Generate load for testing metrics
-  help    Print this message or the help of the given subcommand(s)
+See [`examples/grafana`](examples/grafana) for a local Prometheus and Grafana demo stack.
 
-Options:
-  -i, --interval <INTERVAL>  Update interval in milliseconds [default: 1000]
-  -h, --help                 Print help
-  -V, --version              Print version
-```
-
-### Interactive mode
-
-Run `macmon` without a subcommand to open the terminal UI: the metric boxes on top and the process list below. Press `?` in the app to see the keys.
-
-Press `/` to filter the process list. A filter is a comma-separated list of terms, each matched case-insensitively against the process name or pid: `safari, cargo` shows processes matching any term, and a term starting with `!` hides its matches (`chrome, !helper`). `Enter` keeps the filter, `Esc` clears it.
-
-### JSON output
-
-You can use the `pipe` subcommand to output metrics in JSON format, which makes it suitable for piping into other tools or scripts. For example:
-
-```sh
-macmon pipe | jq
-```
-
-This command runs `macmon` in "pipe" mode and sends the output to `jq` for pretty-printing.
-
-You can also specify the number of samples to collect using the `-s` or `--samples` parameter (default: `0`, which runs indefinitely), and set the update interval in milliseconds using the `-i` or `--interval` parameter (default: `1000` ms). For example:
-
-```sh
-macmon pipe -s 10 -i 500 | jq
-```
-
-This will collect 10 samples with an update interval of 500 milliseconds.
-
-### HTTP server
-
-You can use the `serve` subcommand to expose metrics over HTTP. This is useful for integrating with monitoring systems like [Prometheus](https://prometheus.io/) and [Grafana](https://grafana.com/).
-
-```sh
-macmon serve                   # default port 9090, interval 1000ms
-macmon serve --host 127.0.0.1  # listen on localhost only
-macmon serve -p 8080           # custom port
-macmon serve -i 500            # sampling interval 500ms
-macmon serve &                 # run in background
-```
-
-Two endpoints are available:
-
-| Endpoint       | Format     | Description                                                                                       |
-| -------------- | ---------- | ------------------------------------------------------------------------------------------------- |
-| `GET /json`    | JSON       | Current metrics snapshot (same format as `pipe --soc-info`)                                       |
-| `GET /metrics` | Prometheus | Metrics in [Prometheus text format](https://prometheus.io/docs/instrumenting/exposition_formats/) |
-
-#### launchd service
-
-To start `macmon serve` automatically on login and keep it running:
-
-```sh
-macmon serve --install                   # install and start (default port 9090)
-macmon serve --port 8080 --install       # with custom port
-macmon serve --host 127.0.0.1 --install  # listen on localhost only
-macmon serve --uninstall                 # stop and remove
-```
-
-This creates a launchd agent at `~/Library/LaunchAgents/com.macmon.plist` that auto-starts on login and restarts on crash.
-
-#### Prometheus and Grafana
-
-The `/metrics` endpoint exposes metrics in Prometheus format. See [`examples/grafana`](examples/grafana) for a local demo stack with Prometheus and Grafana.
-
-<details>
-<summary>Prometheus output example</summary>
-
-```
-# HELP macmon_cpu_temp_celsius Average CPU temperature in Celsius
-# TYPE macmon_cpu_temp_celsius gauge
-macmon_cpu_temp_celsius{chip="Apple M3 Pro"} 47.3
-
-# HELP macmon_cpu_power_watts CPU power consumption in Watts
-# TYPE macmon_cpu_power_watts gauge
-macmon_cpu_power_watts{chip="Apple M3 Pro"} 8.42
-
-# HELP macmon_fan_speed_rpm Fan speed in revolutions per minute
-# TYPE macmon_fan_speed_rpm gauge
-macmon_fan_speed_rpm{chip="Apple M3 Pro",fan="fan0"} 1234
-
-# HELP macmon_cpu_scaled_ratio Combined frequency-scaled CPU ratio (0–1), weighted by core count
-# TYPE macmon_cpu_scaled_ratio gauge
-macmon_cpu_scaled_ratio{chip="Apple M3 Pro"} 0.037
-
-# HELP macmon_cpu_active_ratio Combined CPU active residency ratio (not frequency-scaled, 0–1), weighted by core count
-# TYPE macmon_cpu_active_ratio gauge
-macmon_cpu_active_ratio{chip="Apple M3 Pro"} 0.092
-
-# HELP macmon_cpu_tier_freq_mhz CPU tier frequency in MHz
-# TYPE macmon_cpu_tier_freq_mhz gauge
-macmon_cpu_tier_freq_mhz{chip="Apple M3 Pro",tier="E"} 1100
-macmon_cpu_tier_freq_mhz{chip="Apple M3 Pro",tier="P"} 1800
-
-# HELP macmon_cpu_tier_scaled_ratio CPU tier frequency-scaled ratio (0–1)
-# TYPE macmon_cpu_tier_scaled_ratio gauge
-macmon_cpu_tier_scaled_ratio{chip="Apple M3 Pro",tier="E"} 0.083
-macmon_cpu_tier_scaled_ratio{chip="Apple M3 Pro",tier="P"} 0.015
-
-# HELP macmon_cpu_tier_active_ratio CPU tier active residency ratio (not frequency-scaled, 0–1)
-# TYPE macmon_cpu_tier_active_ratio gauge
-macmon_cpu_tier_active_ratio{chip="Apple M3 Pro",tier="E"} 0.18
-macmon_cpu_tier_active_ratio{chip="Apple M3 Pro",tier="P"} 0.04
-```
-
-`macmon_ecpu_*` and `macmon_pcpu_*` are still exported for the lowest and the highest tier.
-
-</details>
-
-### Stress testing
-
-Use `macmon stress` to generate load while checking metric behavior:
-
-```sh
-macmon stress
-macmon stress pulse --duration 30
-macmon stress cpu --duration 30
-macmon stress cpu --workers 8 --duration 30
-macmon stress gpu --duration 30
-macmon stress all --duration 30
-```
-
-The default `pulse` mode generates a predictable cyclic CPU load with a fixed 50% duty cycle on half of the logical CPUs. The `cpu` and `gpu` modes continuously load only the selected processor, while `all` loads both. The `cpu` and `all` modes use all logical CPUs unless `--workers` is specified; `--workers` has no effect in `gpu` mode.
+Upstream also publishes this CLI as a package, without the app: `brew install macmon`,
+`cargo install macmon`, `sudo port install macmon`, or `nix-env -i macmon`. Those install upstream's
+release, so `macmon` will be on your `PATH` but there will be no menu bar app. Build this repository for
+the app.
 
 ## 📊 Metrics
 
 ### Power sources and macOS 27
 
-macOS 27 broke the CPU/ANE power source that macmon previously used without root. The IOReport `Energy Model` counters can remain visible but stop updating: refreshing them now requires the private `com.apple.private.pmgr.nrg.reporting` entitlement. Apple's signed `powermetrics` has this entitlement and can keep using the named channels. Running macmon with `sudo` does not grant the same access.
+macOS 27 broke the CPU/ANE power source that macmon previously used without root. The IOReport
+`Energy Model` counters can remain visible but stop updating: refreshing them now requires the private
+`com.apple.private.pmgr.nrg.reporting` entitlement. Apple's signed `powermetrics` has this entitlement
+and can keep using the named channels. Running macmon with `sudo` does not grant the same access.
 
-The working rootless workaround we found is to read hidden energy reports from the AppleCLPC driver through IOReport. These reports use opaque IDs instead of discoverable CPU/GPU/ANE channel names, so macmon has to identify the counters and verify their units. This leaves macmon maintaining undocumented mappings for data that Apple's own tool can still read directly.
+The working rootless workaround we found is to read hidden energy reports from the AppleCLPC driver
+through IOReport. These reports use opaque IDs instead of discoverable CPU/GPU/ANE channel names, so
+macmon has to identify the counters and verify their units. This leaves macmon maintaining undocumented
+mappings for data that Apple's own tool can still read directly.
 
-Both the CLI and the Rust library use known CLPC counters automatically, and `Sampler::new()` retains legacy fallbacks for older systems. New chips or driver versions may need additional mappings. On an unsupported configuration, zero CPU/ANE readings can mean unavailable counters rather than zero consumption. See [docs/clpc-discovery.md](docs/clpc-discovery.md) for details.
+Both the CLI and the Rust library use known CLPC counters automatically, and `Sampler::new()` retains
+legacy fallbacks for older systems. New chips or driver versions may need additional mappings. On an
+unsupported configuration, zero CPU/ANE readings can mean unavailable counters rather than zero
+consumption. See [docs/clpc-discovery.md](docs/clpc-discovery.md) for details.
 
 ### Output format
 
-The `pipe` command and the HTTP `/json` endpoint return the same metrics:
+The `pipe` command, the HTTP `/json` endpoint, and the app share the same metric names — the app reads
+them through the C ABI of [`ffi/`](ffi) rather than parsing JSON.
 
 <details>
 <summary>JSON example</summary>
@@ -222,7 +163,8 @@ The `pipe` command and the HTTP `/json` endpoint return the same metrics:
   },
   "memory": {
     "ram_total": 25769803776, // Bytes
-    "ram_usage": 20985479168, // Bytes
+    "ram_usage": 20985479168, // Bytes, as Activity Monitor counts it: includes reclaimable pages
+    "ram_available": 6871947673, // Bytes the kernel can still hand out: free + inactive + purgeable + speculative, the pressure figure
     "swap_total": 4294967296, // Bytes
     "swap_usage": 2602434560, // Bytes
   },
@@ -263,6 +205,11 @@ The `pipe` command and the HTTP `/json` endpoint return the same metrics:
   "pcpu_active_ratio": 0.04,
   "ecpu_cores": [/* cores of the first tier */],
   "pcpu_cores": [/* cores of the last tier */],
+  // Deprecated v0.7 aliases, kept for consumers that predate cpu_tiers
+  "cpu_usage_pct": 0.036854, // cpu_scaled_ratio
+  "ecpu_usage": [1100, 0.082656614], // [ecpu_freq_mhz, ecpu_scaled_ratio]
+  "pcpu_usage": [1800, 0.015181795], // [pcpu_freq_mhz, pcpu_scaled_ratio]
+  "gpu_usage": [461, 0.021497859], // [gpu_freq_mhz, gpu_scaled_ratio]
   "gpu_freq_mhz": 461, // GPU frequency
   "gpu_scaled_ratio": 0.021497859, // Frequency-scaled ratio (0–1)
   "gpu_active_ratio": 0.09, // GPU active residency ratio (not frequency-scaled, 0–1)
@@ -277,6 +224,10 @@ The `pipe` command and the HTTP `/json` endpoint return the same metrics:
 ```
 
 </details>
+
+`ram_available` is the fork's one addition to the format. It is additive: consumers that do not know the
+field are unaffected, and `ram_usage` keeps its meaning. The rest of the key set, deprecated aliases
+included, is upstream's and unchanged.
 
 ### Active and scaled ratios
 
@@ -338,6 +289,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => println!("CPU temp:   N/A"),
     }
     println!("RAM usage:  {} / {} bytes", metrics.memory.ram_usage, metrics.memory.ram_total);
+    println!("RAM free:   {} bytes", metrics.memory.ram_available);
     for tier in &metrics.cpu_tiers {
         println!("{}-CPU:      {} MHz  {:.1}%", tier.label, tier.freq_mhz, tier.scaled_ratio * 100.0);
     }
@@ -376,13 +328,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Creating `Sampler` inside the worker keeps its low-level macOS handles on that thread. In an async runtime, use its blocking-thread facility rather than calling `get_metrics` directly from an executor worker.
 
+The same sampler is available to non-Rust UIs through the C ABI in [`ffi/`](ffi), which returns each
+sample as JSON. That is the seam the app uses, and it keeps the ABI stable while the metrics grow.
+
 ## 🤝 Contributing
 
-All contributions are welcome! Feel free to open an issue or submit a pull request.
+Upstream takes issues and pull requests: see [`vladkens/macmon`](https://github.com/vladkens/macmon).
+This fork is developed for one Mac and commits straight to `main`; see [FORK.md](FORK.md).
 
 ## 📝 License
 
-Distributed under the [MIT License](LICENSE).
+Distributed under the [MIT License](LICENSE), as upstream, and the same terms cover this fork's changes.
 
 ## 🔍 See also
 
@@ -391,3 +347,5 @@ Distributed under the [MIT License](LICENSE).
 - [op06072/NeoAsitop](https://github.com/op06072/NeoAsitop) – Written in Swift, sudoless.
 - [graelo/pumas](https://github.com/graelo/pumas) – Written in Rust, requires sudo.
 - [context-labs/mactop](https://github.com/context-labs/mactop) – Written in Go, requires sudo.
+- [exelban/stats](https://github.com/exelban/stats) – A menu bar monitor with many more sensors, and a
+  different design: macmon's app is a panel on this sampler, so it shows the same power figures the CLI does.

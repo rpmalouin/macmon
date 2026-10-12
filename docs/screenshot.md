@@ -29,3 +29,11 @@ The size assumes one tab: a tab bar takes rows. At 120 columns every box title f
 ## Upload
 
 Add the image to the `assets` branch as `macmon-v<major>.<minor>.png`, keeping the older images for older README versions, and point the README `<img>` at it. Push `assets` before `main`.
+
+## The app image
+
+`docs/app.png` is the app's screenshot: a plain `screencapture` of the installed build with the panel
+open, menu bar included. Let it run long enough to fill the history chart before capturing, and pick a
+moment when the process list is busy — an idle machine makes a dull picture. Nothing is staged: this is
+what the app looks like.
+

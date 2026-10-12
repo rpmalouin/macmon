@@ -1,7 +1,7 @@
 # Roadmap
 
-Work on one item at a time, each through its own PR. When an item is taken, its plan goes to
-`docs/plans/yyyymmdd-<name>.md` and is linked here. Tick an item in the PR that finishes it.
+Work on one item at a time, on `main`. When an item is taken, its plan goes to
+`docs/plans/yyyymmdd-<name>.md` and is linked here. Tick an item in the commit that finishes it.
 
 Process data beyond CPU% and memory comes from libproc, which reads only the user's own
 processes without root (all of them under sudo). Other users' processes show `-` there, as
