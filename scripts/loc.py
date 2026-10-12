@@ -14,7 +14,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PARTS = {"library": "src", "app": "src/app", "tui": "src/app/tui", "ffi": "ffi/src"}
+# part -> (folder, source suffix, recursive)
+PARTS = {
+  "library": ("src", ".rs", False),
+  "app": ("src/app", ".rs", False),
+  "tui": ("src/app/tui", ".rs", False),
+  "ffi": ("ffi/src", ".rs", False),
+  "macapp": ("macos/Sources", ".swift", True),
+}
 CFG_TEST_RE = re.compile(r"\s*#\[cfg\(test\)\]")
 # String and char literals and line comments: braces in them don't change the depth.
 NOISE_RE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])\'|//.*')
@@ -41,12 +48,13 @@ def prod(text: str) -> int:
     return n
 
 
-def count(ref: str | None, folder: str) -> int:
+def count(ref: str | None, folder: str, suffix: str, recursive: bool) -> int:
     if ref is None:
-        return sum(prod(x.read_text()) for x in (ROOT / folder).glob("*.rs"))
+        pattern = f"**/*{suffix}" if recursive else f"*{suffix}"
+        return sum(prod(x.read_text()) for x in (ROOT / folder).glob(pattern))
 
     files = git("ls-tree", "--name-only", ref, f"{folder}/").stdout.splitlines()
-    return sum(prod(git("show", f"{ref}:{x}").stdout) for x in files if x.endswith(".rs"))
+    return sum(prod(git("show", f"{ref}:{x}").stdout) for x in files if x.endswith(suffix))
 
 
 def main():
@@ -54,7 +62,14 @@ def main():
     if ref and git("rev-parse", "--verify", "--quiet", f"{ref}^{{tree}}").returncode:
         sys.exit(f"unknown ref: {ref}")
 
-    rows = [(name, count(None, x), count(ref, x) if ref else 0) for name, x in PARTS.items()]
+    rows = [
+        (
+            name,
+            count(None, folder, suffix, recursive),
+            count(ref, folder, suffix, recursive) if ref else 0,
+        )
+        for name, (folder, suffix, recursive) in PARTS.items()
+    ]
     rows.append(("total", sum(x[1] for x in rows), sum(x[2] for x in rows)))
     print(f"{'part':<8} {'now':>6}" + (f" {ref:>12} {'diff':>6}" if ref else ""))
     for name, now, base in rows:

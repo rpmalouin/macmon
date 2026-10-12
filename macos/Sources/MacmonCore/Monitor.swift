@@ -1,0 +1,70 @@
+import Foundation
+import Observation
+
+/// The last sample, kept fresh by one sampling loop on its own serial queue.
+///
+/// The C sampler is thread-affine, so it is created, used and released inside that queue; readers
+/// only see the last decoded sample. `onUpdate` is called on the main thread after every change,
+/// which is what the status item refreshes from.
+@Observable
+public final class Monitor {
+  public private(set) var sample: Sample?
+  public private(set) var failure: String?
+
+  /// Called on the main thread whenever `sample` or `failure` changes.
+  @ObservationIgnored public var onUpdate: (() -> Void)?
+
+  @ObservationIgnored private let queue = DispatchQueue(label: "macmon.sampler")
+  /// Everything below is touched only on `queue`.
+  @ObservationIgnored private var intervalMs: UInt32
+  @ObservationIgnored private var running = false
+  @ObservationIgnored private var stopped = false
+
+  public init(intervalMs: UInt32 = 1000) {
+    self.intervalMs = max(100, intervalMs)
+  }
+
+  /// Polling interval in milliseconds; the loop picks a change up on its next tick.
+  public func setInterval(_ ms: UInt32) {
+    queue.async { self.intervalMs = max(100, ms) }
+  }
+
+  /// Start sampling and keep going until `stop()`. Does nothing when it is already running.
+  public func start() {
+    queue.async {
+      guard !self.running else { return }
+      self.running = true
+      self.stopped = false
+      var sampler: Sampler?
+
+      while !self.stopped {
+        do {
+          if sampler == nil { sampler = try Sampler() }
+          let next = try sampler?.next(durationMs: self.intervalMs)
+          self.publish(sample: next, failure: nil)
+        } catch {
+          self.publish(sample: nil, failure: String(describing: error))
+          // A sampler that cannot be created keeps failing: wait a beat instead of spinning.
+          Thread.sleep(forTimeInterval: 1)
+        }
+      }
+
+      sampler = nil // released on the thread that created it
+      self.running = false
+    }
+  }
+
+  /// Ask the loop to stop; it exits after the sample in flight (up to one interval).
+  public func stop() {
+    stopped = true
+  }
+
+  private func publish(sample: Sample?, failure: String?) {
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      self.sample = sample
+      self.failure = failure
+      self.onUpdate?()
+    }
+  }
+}

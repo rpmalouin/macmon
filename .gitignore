@@ -8,3 +8,5 @@ target/
 /out/
 /.worktrees/
 __pycache__/
+/dist/
+macos/.build/

@@ -24,7 +24,7 @@ build:
 update:
 	cargo upgrade -i
 
-.PHONY: loc bench remote
+.PHONY: loc bench remote macapp macapp-run macapp-test
 
 loc: # production lines, tests excluded; REF=origin/main compares with a git ref
 	@python3 scripts/loc.py $(REF)
@@ -40,3 +40,12 @@ remote:
 	@rsync -az Cargo.toml Cargo.lock Makefile src "$(host):macmon/"
 	@ssh "$(host)" 'cd ~/macmon && cargo build $(CARGO_FLAGS) && ./target/release/macmon debug'
 	@ssh "$(host)" 'cd ~/macmon && ./target/release/macmon pipe -s 1 -i 100 > /dev/null'
+
+macapp: # the menu bar app in dist/, ad-hoc signed (scripts/app-build.sh)
+	scripts/app-build.sh
+
+macapp-run: # build the app and open it
+	scripts/app-build.sh run
+
+macapp-test: # the app's Swift tests
+	scripts/app-build.sh test
