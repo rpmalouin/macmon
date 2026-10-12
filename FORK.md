@@ -8,6 +8,10 @@ terminal UI, `pipe`, `serve`, `stress`, `find-clpc` and the Rust library. This f
 adds the app. Nothing here is written with the intent of being merged upstream, and nothing here is
 published: no crates.io, no Homebrew, no release artifacts. Build it from source.
 
+Nothing is filed upstream either — no pull requests and no issues. The fixes below live here, are
+maintained here, and stay local deltas against upstream by design (see [Keeping in step](#keeping-in-step-with-upstream)).
+Fork this repository if you want any of it, and support your copy.
+
 If you are looking for `macmon` the tool rather than this app, use upstream:
 [`brew install macmon`](https://github.com/vladkens/macmon).
 

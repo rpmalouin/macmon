@@ -333,8 +333,14 @@ sample as JSON. That is the seam the app uses, and it keeps the ABI stable while
 
 ## 🤝 Contributing
 
-Upstream takes issues and pull requests: see [`vladkens/macmon`](https://github.com/vladkens/macmon).
-This fork is developed for one Mac and commits straight to `main`; see [FORK.md](FORK.md).
+This fork is mine and is maintained for my own Mac: it commits straight to `main`, has no review process,
+and takes no pull requests. The app and its C ABI are fork-specific and are not proposed upstream —
+upstream is a CLI tool, and a menu bar app is outside its scope (see [FORK.md](FORK.md)).
+
+If you want any of it, fork this repository and support your copy. Everything here is MIT, the app builds
+with `make macapp-install` from a clone, and [FORK.md](FORK.md) records what diverges from upstream and
+how to keep the two in step. Upstream's issues and pull requests are their own:
+[`vladkens/macmon`](https://github.com/vladkens/macmon).
 
 ## 📝 License
 
