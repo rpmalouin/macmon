@@ -27,6 +27,8 @@ POWER does today.
       #59, or a small one that returns the `pipe` JSON (sampler new / next / free, SoC info,
       last error), which keeps the ABI stable while metrics change. Release packaging: the dylib,
       the header and an `XCFramework`; bindings stay outside this repository.
+      Decided: the JSON ABI, in a `ffi/` workspace member (item 13 consumes its ABI; the dylib and
+      XCFramework packaging stays here).
 - [ ] **5. More process columns.** Candidates: CPU TIME (total, all processes: already sampled
       from `rusage` and `ps`), THREADS (`proc_taskinfo`), IDLE WAKE/s (`rusage`
       `ri_pkg_idle_wkups`), FDS (open file descriptors), DISK R/W/s (`rusage` disk bytes), PEAK
@@ -70,6 +72,11 @@ POWER does today.
       availability flags in the JSON and the Prometheus gauges left out; GPU usage from the
       IOAccelerator client time.
       Plan (first PR): [docs/plans/completed/20261012-vm-start.md](plans/completed/20261012-vm-start.md).
+- [ ] **13. A menu bar app.** A macOS app in `macos/` on the sampler: a status item and a popover
+      dashboard with the metrics the TUI shows, fed by the C ABI of item 4, so the app, the TUI,
+      `pipe` and `serve` cannot drift apart. No privileged helper and no sudo: ad-hoc signed,
+      assembled from `swift build` output, started from a LaunchAgent.
+      Plan: [docs/plans/20261012-macos-app.md](plans/20261012-macos-app.md).
 
 Later, only on request: automatic grouping of an app's processes (filter terms with totals
 cover the known-app case), per-process network (only `nettop` has it without root), history
