@@ -28,10 +28,16 @@ public struct StatusLabel: Equatable {
     load = Self.load(cpuPercent: cpuPercent, memoryPercent: memoryPercent)
   }
 
-  /// Heavy above 75% CPU or 85% memory; moderate from 40% CPU or above 70% memory; clear below.
+  /// Heavy above 75% CPU or 93% memory; moderate from 40% CPU or above 88% memory; clear below.
+  ///
+  /// The memory thresholds sit near the top on purpose. The number is Activity Monitor's "Memory
+  /// Used" (active + inactive + wired + compressed), and `inactive` is reclaimable: on this machine,
+  /// which keeps a ~35 GB local model resident, it reads 88–90% while macOS still has 10 GB or more
+  /// to give and the swap file sits untouched. Above 93% something else is eating memory on top of
+  /// the model, and that is worth a red dot.
   static func load(cpuPercent: Double, memoryPercent: Double) -> Load {
-    if cpuPercent > 75 || memoryPercent > 85 { return .heavy }
-    if cpuPercent >= 40 || memoryPercent > 70 { return .moderate }
+    if cpuPercent > 75 || memoryPercent > 93 { return .heavy }
+    if cpuPercent >= 40 || memoryPercent > 88 { return .moderate }
     return .clear
   }
 }
