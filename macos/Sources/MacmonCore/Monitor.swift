@@ -9,6 +9,8 @@ import Observation
 @Observable
 public final class Monitor {
   public private(set) var sample: Sample?
+  /// Static machine information, published once with the first sample.
+  public private(set) var soc: SocInfo?
   public private(set) var failure: String?
 
   /// Called on the main thread whenever `sample` or `failure` changes.
@@ -39,7 +41,11 @@ public final class Monitor {
 
       while !self.stopped {
         do {
-          if sampler == nil { sampler = try Sampler() }
+          if sampler == nil {
+            let created = try Sampler()
+            sampler = created
+            self.publish(soc: try created.soc())
+          }
           let next = try sampler?.next(durationMs: self.intervalMs)
           self.publish(sample: next, failure: nil)
         } catch {
@@ -57,6 +63,14 @@ public final class Monitor {
   /// Ask the loop to stop; it exits after the sample in flight (up to one interval).
   public func stop() {
     stopped = true
+  }
+
+  private func publish(soc: SocInfo) {
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      self.soc = soc
+      self.onUpdate?()
+    }
   }
 
   private func publish(sample: Sample?, failure: String?) {

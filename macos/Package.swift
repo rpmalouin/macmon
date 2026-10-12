@@ -12,6 +12,8 @@ let package = Package(
     .target(name: "CMacmon", path: "Sources/CMacmon"),
     .target(name: "MacmonCore", dependencies: ["CMacmon"], path: "Sources/MacmonCore"),
     .executableTarget(name: "MacmonApp", dependencies: ["MacmonCore"], path: "Sources/MacmonApp"),
-    .testTarget(name: "MacmonCoreTests", dependencies: ["MacmonCore"], path: "Tests/MacmonCoreTests"),
+    .testTarget(
+      name: "MacmonCoreTests", dependencies: ["MacmonCore"], path: "Tests/MacmonCoreTests",
+      resources: [.copy("Fixtures")]),
   ]
 )

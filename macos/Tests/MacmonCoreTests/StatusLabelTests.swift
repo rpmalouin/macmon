@@ -31,9 +31,9 @@ final class StatusLabelTests: XCTestCase {
   }
 
   func testLoadFromASampleUsesItsMemoryFraction() {
-    let sample = Sample(
-      timestamp: 0, cpuScaledRatio: 0.42,
-      memory: Sample.Memory(ramTotal: 100, ramUsage: 90, swapTotal: 0, swapUsage: 0))
+    let sample = Sample.fixture(
+      cpuScaledRatio: 0.42,
+      memory: .init(ramTotal: 100, ramUsage: 90, swapTotal: 0, swapUsage: 0))
     XCTAssertEqual(StatusLabel(sample: sample).load, .heavy)
     XCTAssertEqual(StatusLabel(sample: sample).text, "CPU 42%  MEM 90%")
   }
